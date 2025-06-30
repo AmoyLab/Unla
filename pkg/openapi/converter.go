@@ -330,6 +330,38 @@ func (c *Converter) ConvertFromYAML(yamlData []byte) (*config.MCPConfig, error) 
 	return c.Convert(yamlData)
 }
 
+// ConvertWithOptions converts OpenAPI specification to MCP configuration, using tenant and prefix if provided
+func (c *Converter) ConvertWithOptions(specData []byte, tenant, prefix string) (*config.MCPConfig, error) {
+	config, err := c.Convert(specData)
+	if err != nil {
+		return nil, err
+	}
+    // Remove leading / from tenant if present
+	cleanTenant := tenant
+	if strings.HasPrefix(cleanTenant, "/") {
+		cleanTenant = strings.TrimPrefix(cleanTenant, "/")
+	}	
+	if tenant != "" && prefix != "" {
+		config.Tenant = cleanTenant 
+		if len(config.Routers) > 0 {
+			config.Routers[0].Prefix = cleanTenant + "/" + prefix
+		}
+	} else if tenant != "" {
+		config.Tenant = cleanTenant
+		if len(config.Routers) > 0 {
+			// Autogenerate prefix as in default logic
+			rs := lol.RandomString(4)
+			config.Routers[0].Prefix = cleanTenant + "/" + rs
+		}
+	} else if prefix != "" {
+		config.Tenant = "default"
+		if len(config.Routers) > 0 {
+			config.Routers[0].Prefix = "/default/" + prefix
+		}
+	}
+	return config, nil
+}
+
 // contains checks if a string is in a slice
 func contains(slice []string, str string) bool {
 	for _, v := range slice {
