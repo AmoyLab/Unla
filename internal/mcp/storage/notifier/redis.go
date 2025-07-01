@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/amoylab/unla/internal/common/cnst"
+	"github.com/amoylab/unla/pkg/utils"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -24,7 +24,7 @@ type RedisNotifier struct {
 
 // NewRedisNotifier creates a new Redis-based notifier
 func NewRedisNotifier(logger *zap.Logger, clusterType, addr, masterName, username, password string, db int, topic string, role config.NotifierRole) (*RedisNotifier, error) {
-	addrs := strings.Split(addr, ";")
+	addrs := utils.SplitByMultipleDelimiters(addr, ";", ",")
 	redisOptions := &redis.UniversalOptions{
 		Addrs:    addrs,
 		Username: username,
