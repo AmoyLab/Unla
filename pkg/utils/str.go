@@ -16,6 +16,9 @@ func FirstNonEmpty(str1, str2 string) string {
 }
 
 func SplitByMultipleDelimiters(s string, delimiters ...string) []string {
+	if len(delimiters) == 0 {
+		return []string{s}
+	}
 	delimiterPattern := "[" + regexp.QuoteMeta(strings.Join(delimiters, "")) + "]"
 	re := regexp.MustCompile(delimiterPattern)
 	return re.Split(s, -1)

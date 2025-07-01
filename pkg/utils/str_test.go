@@ -19,4 +19,8 @@ func TestSplitByMultipleDelimiters(t *testing.T) {
 	expected = []string{"a"}
 	result = SplitByMultipleDelimiters(input, delimiters...)
 	assert.Equal(t, expected, result)
+	input = "a,b"
+	expected = []string{"a,b"}
+	result = SplitByMultipleDelimiters(input)
+	assert.Equal(t, expected, result)
 }
