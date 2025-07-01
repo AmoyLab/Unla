@@ -1,5 +1,5 @@
 import { Input, Select, SelectItem, Button, Switch, Accordion, AccordionItem } from "@heroui/react";
-import { useState, useEffect, useMemo } from 'react';
+import { ChangeEvent, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import LocalIcon from '@/components/LocalIcon';
@@ -23,7 +23,8 @@ export function MCPServersConfig({
       args: [],
       env: {},
       policy: "onDemand",
-      preinstalled: false
+      preinstalled: false,
+      allowAuthorizationPassThrough: false
     }],
     [parsedConfig?.mcpServers]
   );
@@ -31,18 +32,23 @@ export function MCPServersConfig({
 
   // Initialize command inputs when mcpServers changes
   useEffect(() => {
-    const initialInputs = mcpServers.reduce<{ [key: number]: string }>((acc, server, index) => {
+    const initialInputs = mcpServers.reduce<{ [key: number]: string }>((acc: { [key: number]: string }, server: MCPServerConfig, index: number) => {
       acc[index] = `${server.command || ''} ${server.args?.join(' ') || ''}`.trim();
       return acc;
     }, {});
     setCommandInputs(initialInputs);
   }, [mcpServers]);
 
-  const updateServer = (index: number, field: 'name' | 'type' | 'policy' | 'command' | 'url' | 'preinstalled', value: string | boolean) => {
+  const updateServer = (index: number, field: 'name' | 'type' | 'policy' | 'command' | 'url' | 'preinstalled' | 'allowAuthorizationPassThrough', value: string | boolean) => {
     const updatedServers = [...mcpServers];
     const oldName = updatedServers[index].name;
     
-    if (field === 'command') {
+    if (field === 'allowAuthorizationPassThrough') {
+      updatedServers[index] = {
+        ...updatedServers[index],
+        [field]: value as boolean
+      };
+    } else if (field === 'command') {
       // Split the command string by whitespace and update both command and args
       const commandValue = value as string;
       const parts = commandValue.trim().split(/\s+/);
@@ -78,7 +84,7 @@ export function MCPServersConfig({
   };
 
   const handleCommandInputChange = (index: number, value: string) => {
-    setCommandInputs(prev => ({
+    setCommandInputs((prev: { [key: number]: string }) => ({
       ...prev,
       [index]: value
     }));
@@ -177,7 +183,8 @@ export function MCPServersConfig({
       args: [],
       env: {},
       policy: "onDemand",
-      preinstalled: false
+      preinstalled: false,
+      allowAuthorizationPassThrough: false
     };
     updateConfig({
       mcpServers: [...mcpServers, newServer]
@@ -185,7 +192,7 @@ export function MCPServersConfig({
   };
 
   const removeServer = (index: number) => {
-    const updatedServers = mcpServers.filter((_, i) => i !== index);
+    const updatedServers = mcpServers.filter((_: MCPServerConfig, i: number) => i !== index);
     updateConfig({
       mcpServers: updatedServers
     });
@@ -194,7 +201,7 @@ export function MCPServersConfig({
   return (
     <div className="space-y-4">
       <Accordion variant="splitted">
-        {mcpServers.map((server, index) => (
+        {mcpServers.map((server: MCPServerConfig, index: number) => (
           <AccordionItem 
             key={index} 
             title={server.name || `MCP Server ${index + 1}`}
@@ -214,14 +221,14 @@ export function MCPServersConfig({
                 <Input
                   label={t('gateway.server_name')}
                   value={server.name || ""}
-                  onChange={(e) => updateServer(index, 'name', e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => updateServer(index, 'name', e.target.value)}
                   maxLength={50}
                   description={t('gateway.server_name_limit', { count: server.name?.length || 0, max: 50 })}
                 />
                 <Select
                   label={t('gateway.mcp_type')}
                   selectedKeys={[server.type || "stdio"]}
-                  onChange={(e) => updateServer(index, 'type', e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => updateServer(index, 'type', e.target.value)}
                   aria-label={t('gateway.mcp_type')}
                 >
                   <SelectItem key="stdio">stdio</SelectItem>
@@ -233,7 +240,7 @@ export function MCPServersConfig({
               <Select
                 label={t('gateway.startup_policy')}
                 selectedKeys={[server.policy || "onDemand"]}
-                onChange={(e) => updateServer(index, 'policy', e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => updateServer(index, 'policy', e.target.value)}
                 aria-label={t('gateway.startup_policy')}
               >
                 <SelectItem key="onDemand">{t('gateway.policy_on_demand')}</SelectItem>
@@ -245,7 +252,7 @@ export function MCPServersConfig({
                   <div className="bg-content1 p-4 rounded-medium border border-content2">
                     <Switch
                       isSelected={server.preinstalled}
-                      onValueChange={(value) => updateServer(index, 'preinstalled', value)}
+                      onValueChange={(value: boolean) => updateServer(index, 'preinstalled', value)}
                       size="sm"
                     >
                       {t('gateway.preinstalled')}
@@ -254,7 +261,7 @@ export function MCPServersConfig({
                     <Input
                       label={t('gateway.command')}
                       value={commandInputs[index] || ''}
-                      onChange={(e) => handleCommandInputChange(index, e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => handleCommandInputChange(index, e.target.value)}
                       onBlur={() => handleCommandInputBlur(index)}
                       placeholder="command arg1 arg2 arg3"
                       type="text"
@@ -265,18 +272,18 @@ export function MCPServersConfig({
                     <div className="mt-4">
                       <h4 className="text-sm font-medium mb-2">{t('gateway.env_variables')}</h4>
                       <div className="flex flex-col gap-2">
-                        {Object.entries(server.env || {}).map(([key, value], envIndex) => (
+                        {Object.entries(server.env || {}).map(([key, value]: [string, string], envIndex: number) => (
                           <div key={envIndex} className="flex items-center gap-2">
                             <Input
                               className="flex-1"
                               value={key}
-                              onChange={(e) => updateEnvVariable(index, envIndex, 'key', e.target.value)}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => updateEnvVariable(index, envIndex, 'key', e.target.value)}
                               placeholder={t('gateway.env_key_placeholder')}
                             />
                             <Input
                               className="flex-1"
                               value={String(value)}
-                              onChange={(e) => updateEnvVariable(index, envIndex, 'value', e.target.value)}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => updateEnvVariable(index, envIndex, 'value', e.target.value)}
                               placeholder={t('gateway.env_value_placeholder')}
                             />
                             <Button
@@ -310,9 +317,20 @@ export function MCPServersConfig({
                   <Input
                     label={t('gateway.url')}
                     value={server.url || ''}
-                    onChange={(e) => updateServer(index, 'url', e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => updateServer(index, 'url', e.target.value)}
                   />
                 </div>
+              )}
+
+              {server.type === 'streamable-http' && (
+                <Switch
+                  isSelected={!!server.allowAuthorizationPassThrough}
+                  onValueChange={(value: boolean) => updateServer(index, 'allowAuthorizationPassThrough', value)}
+                  size="sm"
+                  className="mt-2"
+                >
+                  {t('gateway.allow_authorization_pass_through')}
+                </Switch>
               )}
 
               <div className="flex justify-end">

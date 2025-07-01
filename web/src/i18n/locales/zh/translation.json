@@ -330,7 +330,8 @@
     "property_type": "属性类型",
     "property_description": "属性描述",
     "header_name_placeholder": "请输入头部名称",
-    "header_value_placeholder": "请输入头部值"
+    "header_value_placeholder": "请输入头部值",
+    "allow_authorization_pass_through": "允许透传 Authorization 头部"
   },
   "chat": {
     "title": "聊天",

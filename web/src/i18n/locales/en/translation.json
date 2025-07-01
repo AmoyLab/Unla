@@ -330,7 +330,8 @@
     "property_type": "Property Type",
     "property_description": "Property Description",
     "header_name_placeholder": "Enter header name",
-    "header_value_placeholder": "Enter header value"
+    "header_value_placeholder": "Enter header value",
+    "allow_authorization_pass_through": "Allow Authorization Pass Through"
   },
   "chat": {
     "title": "Chat",
