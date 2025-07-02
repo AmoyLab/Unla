@@ -48,4 +48,8 @@ type Database interface {
 	DeleteUserTenants(ctx context.Context, userID uint) error
 
 	Transaction(ctx context.Context, fn func(ctx context.Context) error) error
+
+	// System prompt methods
+	GetSystemPrompt(ctx context.Context, userID uint) (string, error)
+	SaveSystemPrompt(ctx context.Context, userID uint, prompt string) error
 }

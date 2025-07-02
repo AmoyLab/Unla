@@ -330,7 +330,9 @@
     "property_type": "属性类型",
     "property_description": "属性描述",
     "header_name_placeholder": "请输入头部名称",
-    "header_value_placeholder": "请输入头部值"
+    "header_value_placeholder": "请输入头部值",
+    "systemPrompt": "系统提示词",
+    "systemPromptPlaceholder": "为助手设置自定义系统提示词（可选）"
   },
   "chat": {
     "title": "聊天",
@@ -416,7 +418,9 @@
     "delete_success": "聊天会话删除成功",
     "delete_failed": "聊天会话删除失败",
     "rename_session": "重命名聊天会话",
-    "session_title_placeholder": "请输入新的会话标题"
+    "session_title_placeholder": "请输入新的会话标题",
+    "authTokenPlaceholder": "请输入认证令牌",
+    "authToken": "认证令牌"
   },
   "users": {
     "title": "用户管理",

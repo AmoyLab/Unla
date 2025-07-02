@@ -167,6 +167,7 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		chatHandler := apiserverHandler.NewChat(db, logger)
 		mcpHandler := apiserverHandler.NewMCP(db, store, ntf, logger)
 		openapiHandler := apiserverHandler.NewOpenAPI(db, store, ntf, logger)
+		systemPromptHandler := apiserverHandler.NewSystemPrompt(db, logger)
 
 		// Auth routes
 		protected.POST("/auth/change-password", authH.ChangePassword)
