@@ -809,15 +809,13 @@ export function GatewayManager() {
                                     <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                       <div className="flex items-center gap-2">
                                         <span className="text-sm font-medium">{mcpServer.name}</span>
-                                        <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
-                                          {mcpServer.type}
-                                        </Chip>
+                                        <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>{mcpServer.type}</Chip>
                                       </div>
                                       {mcpServer.type === 'stdio' && (
                                         <div className="text-xs">
                                           <div className="flex items-center gap-1">
                                             <span className="font-medium">Command:</span>
-                                            <code className="bg-default-100 px-1 rounded">{mcpServer.command} {mcpServer.args?.join(' ')}</code>
+                                            <code className="bg-default-100 px-1 py-1 rounded">{mcpServer.command} {mcpServer.args?.join(' ')}</code>
                                           </div>
                                           {mcpServer.env && Object.entries(mcpServer.env).map(([key, value]) => (
                                             <div key={key} className="text-xs truncate">
@@ -1018,9 +1016,7 @@ export function GatewayManager() {
                                   <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium">{mcpServer.name}</span>
-                                      <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
-                                        {mcpServer.type}
-                                      </Chip>
+                                      <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>{mcpServer.type}</Chip>
                                     </div>
                                     {mcpServer.type === 'stdio' && (
                                       <div className="text-xs">
@@ -1372,10 +1368,8 @@ export function GatewayManager() {
                         {currentModalServer.mcpServers.map((mcpServer, idx) => (
                           <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{mcpServer.name}</span>
-                              <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
-                                {mcpServer.type}
-                              </Chip>
+                              <span className="text-sm font-medium"></span>
+                              <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}></Chip>
                             </div>
                             {mcpServer.type === 'stdio' && (
                               <div className="text-xs">
@@ -1385,7 +1379,7 @@ export function GatewayManager() {
                                 </div>
                                 {mcpServer.env && Object.entries(mcpServer.env).map(([key, value]) => (
                                   <div key={key} className="text-xs truncate">
-                                    <span className="text-default-500">{key}:</span> {String(value)}
+                                    {String(value)}
                                   </div>
                                 ))}
                               </div>

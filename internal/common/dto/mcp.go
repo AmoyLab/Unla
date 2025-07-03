@@ -80,6 +80,7 @@ type MCPServerConfig struct {
 	URL          string            `json:"url,omitempty"`     // for sse and streamable-http
 	Policy       string            `json:"policy"`            // onStart or onDemand
 	Preinstalled bool              `json:"preinstalled"`      // whether to install this MCP server when mcp-gateway starts
+	AllowAuthorizationPassThrough bool `json:"allowAuthorizationPassThrough"` // if true, pass Authorization header
 }
 
 type ProxyConfig struct {
@@ -293,6 +294,7 @@ func FromMCPServerConfigs(cfgs []config.MCPServerConfig) []MCPServerConfig {
 			URL:          cfg.URL,
 			Policy:       string(cfg.Policy),
 			Preinstalled: cfg.Preinstalled,
+			AllowAuthorizationPassThrough: cfg.AllowAuthorizationPassThrough,
 		}
 	}
 	return result
