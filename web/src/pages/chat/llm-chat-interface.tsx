@@ -8,7 +8,7 @@ import {
   Chip,
   Tooltip
 } from '@heroui/react';
-import { Send, Settings, Square, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Settings, Square, Zap, ChevronDown, ChevronUp, X } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -27,6 +27,7 @@ import { LLMProvider } from '@/types/llm';
 import { Tool } from '@/types/mcp';
 import { Message, ToolCall, ToolResult } from '@/types/message';
 import { toast } from '@/utils/toast';
+import { getSystemPrompt, saveSystemPrompt } from '@/services/systemprompt';
 
 
 export function LLMChatInterface() {
@@ -55,6 +56,10 @@ export function LLMChatInterface() {
   const [isToolsExpanded, setIsToolsExpanded] = useState(false);
 
   const [userInfo, setUserInfo] = useState<{ username: string; role: string } | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [isSystemPromptModalOpen, setIsSystemPromptModalOpen] = useState(false);
+  const [systemPromptDraft, setSystemPromptDraft] = useState('');
+  const [authToken, setAuthToken] = useState(''); // Authorization token state
 
   // Redirect to new session if no sessionId provided
   useEffect(() => {
@@ -69,16 +74,18 @@ export function LLMChatInterface() {
     const enabledProviders = getEnabledProviders();
     if (enabledProviders.length === 0) return;
 
+    // Fix all arrow function parameters and .filter/.map/.flatMap types
+    // Provider/model selection
     const savedProviderId = localStorage.getItem('chat-selected-provider');
     const savedModelId = localStorage.getItem('chat-selected-model');
 
-    let targetProvider = null;
+    let targetProvider: LLMProvider | undefined = undefined;
     let targetModelId = '';
 
     if (savedProviderId) {
-      targetProvider = enabledProviders.find(p => p.id === savedProviderId);
+      targetProvider = enabledProviders.find((p: LLMProvider) => p.id === savedProviderId);
       if (targetProvider && savedModelId) {
-        const hasModel = targetProvider.models.find(m => m.id === savedModelId);
+        const hasModel = targetProvider.models.find((m: any) => m.id === savedModelId);
         if (hasModel) {
           targetModelId = savedModelId;
         }
@@ -88,7 +95,7 @@ export function LLMChatInterface() {
     // Fallback to default selection if no valid saved selection
     if (!targetProvider) {
       targetProvider = enabledProviders[0];
-      const enabledModel = targetProvider.models.find(m => m.enabled);
+      const enabledModel = targetProvider.models.find((m: any) => m.enabled);
       const defaultModel = enabledModel || targetProvider.models[0];
       if (defaultModel) {
         targetModelId = defaultModel.id;
@@ -112,9 +119,9 @@ export function LLMChatInterface() {
   // Reset model selection when provider changes (only if model doesn't belong to new provider)
   useEffect(() => {
     if (selectedProvider && selectedModel) {
-      const hasModel = selectedProvider.models.find(m => m.id === selectedModel);
+      const hasModel = selectedProvider.models.find((m: any) => m.id === selectedModel);
       if (!hasModel) {
-        const enabledModel = selectedProvider.models.find(m => m.enabled);
+        const enabledModel = selectedProvider.models.find((m: any) => m.enabled);
         const defaultModel = enabledModel || selectedProvider.models[0];
         if (defaultModel) {
           setSelectedModel(defaultModel.id);
@@ -142,11 +149,12 @@ export function LLMChatInterface() {
   useEffect(() => {
     const loadToolsForActiveServers = async () => {
       for (const serverName of activeServices) {
-        const server = mcpServers.find(s => s.name === serverName);
+        const server = mcpServers.find((s: Gateway) => s.name === serverName);
         if (!server) continue;
 
         for (const router of server.routers || []) {
           try {
+            // Pass authToken as the second argument to connect
             await mcpService.connect({
               name: serverName,
               prefix: router.prefix,
@@ -156,10 +164,10 @@ export function LLMChatInterface() {
               onNotification: (notification) => {
                 toast.success(t('chat.notification_received', { server: serverName, message: notification }));
               }
-            });
+            }, authToken); // <-- pass token here
 
             const toolsList = await mcpService.getTools(serverName);
-            setTools(prev => ({
+            setTools((prev: Record<string, Tool[]>) => ({
               ...prev,
               [serverName]: toolsList
             }));
@@ -173,7 +181,7 @@ export function LLMChatInterface() {
     if (activeServices.length > 0) {
       loadToolsForActiveServers();
     }
-  }, [activeServices, mcpServers, t]);
+  }, [activeServices, mcpServers, t, authToken]);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     try {
@@ -242,7 +250,7 @@ export function LLMChatInterface() {
         }
       };
 
-      setMessages(prev => [...prev, toolResultMessage]);
+      setMessages((prev: Message[]) => [...prev, toolResultMessage]);
 
       try {
         await saveChatMessage(toolResultMessage);
@@ -254,15 +262,19 @@ export function LLMChatInterface() {
 
       const updatedMessages = [...messages, toolResultMessage];
 
-      const availableTools = Object.entries(tools)
+      // For availableTools in handleToolCallResult (tool name only)
+      const availableTools = (Object.entries(tools) as [string, Tool[]][])
         .filter(([serverName]) => activeServices.includes(serverName))
         .flatMap(([serverName, serverTools]) =>
-          serverTools.map(tool => ({
-            name: `${serverName}:${tool.name}`,
+          serverTools.map((tool) => ({
+            name: sanitizeToolName(`${serverName}:${tool.name}`),
             description: tool.description || tool.name,
-            parameters: tool.inputSchema
+            parameters: tool.inputSchema,
+            originalName: `${serverName}:${tool.name}` // Optionally keep original for mapping
           }))
         );
+      // Build sanitized->original map
+      const sanitizedNameMap = getSanitizedToolNameMap(tools, activeServices);
 
       const assistantMessage: Message = {
         id: uuidv4(),
@@ -273,7 +285,7 @@ export function LLMChatInterface() {
         isStreaming: true
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev: Message[]) => [...prev, assistantMessage]);
       setIsGenerating(true);
 
       await llmChatService.sendMessage(
@@ -282,7 +294,7 @@ export function LLMChatInterface() {
         selectedModel,
         availableTools,
         (chunk: string) => {
-          setMessages(prev => {
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
@@ -293,7 +305,7 @@ export function LLMChatInterface() {
           });
         },
         (reasoningChunk: string) => {
-          setMessages(prev => {
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
@@ -304,20 +316,26 @@ export function LLMChatInterface() {
           });
         },
         async (newToolCalls) => {
-          setMessages(prev => {
+          // Patch tool calls to always have originalName
+          const patchedToolCalls = newToolCalls.map((tc: any) => ({
+            ...tc,
+            function: {
+              ...tc.function,
+              originalName: sanitizedNameMap[tc.function.name] || tc.function.name
+            }
+          }));
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
-              lastMessage.toolCalls = newToolCalls.map(tc => ({
-                id: tc.id,
-                type: tc.type,
-                function: tc.function
-              }));
+              lastMessage.toolCalls = patchedToolCalls;
               lastMessage.isStreaming = false;
+              if (!lastMessage.content.trim() && lastMessage.toolCalls.length > 0) {
+                lastMessage.content = '';
+              }
             }
             return updated;
           });
-          // Note: Don't save message here, wait for onComplete to save uniformly
         },
         async (finalMessage: string) => {
           const messageToBeSaved = {
@@ -331,7 +349,7 @@ export function LLMChatInterface() {
             toolResult: undefined as ToolResult | undefined
           };
 
-          setMessages(prev => {
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
@@ -356,7 +374,7 @@ export function LLMChatInterface() {
         (error: Error) => {
           toast.error(t('errors.llm_request_failed', { error: error.message }));
           setIsGenerating(false);
-          setMessages(prev => prev.filter(msg => !(msg.sender === 'bot' && !msg.content && !msg.toolCalls)));
+          setMessages((prev: Message[]) => prev.filter((msg: Message) => !(msg.sender === 'bot' && !msg.content && !msg.toolCalls)));
         }
       );
 
@@ -369,16 +387,24 @@ export function LLMChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Helper to build LLM messages array with system prompt
+  const buildLLMMessages = (userMessages: Message[]) => {
+    if (!systemPrompt) return userMessages;
+    // System prompt as a special message (not shown in chat)
+    const sysMsg: Message = {
+      id: 'system-prompt',
+      session_id: sessionId!,
+      content: systemPrompt,
+      sender: 'system' as any,
+      timestamp: new Date().toISOString(),
+    };
+    return [sysMsg, ...userMessages];
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !selectedProvider || !selectedModel || isGenerating) return;
-
-    // Ensure sessionId exists, return early if not (wait for useEffect redirect)
-    if (!sessionId) {
-      return;
-    }
-
+    if (!sessionId) return;
     const currentSessionId = sessionId;
-
     const userMessage: Message = {
       id: uuidv4(),
       session_id: currentSessionId,
@@ -386,27 +412,27 @@ export function LLMChatInterface() {
       sender: 'user',
       timestamp: new Date().toISOString(),
     };
-
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev: Message[]) => [...prev, userMessage]);
     setInput('');
     setIsGenerating(true);
-
     try {
       await saveChatMessage(userMessage);
     } catch (error) {
       console.warn('Failed to save user message:', error);
     }
-
-    const availableTools = Object.entries(tools)
+    // For availableTools in handleSend (serverName:toolName)
+    const availableTools = (Object.entries(tools) as [string, Tool[]][])
       .filter(([serverName]) => activeServices.includes(serverName))
       .flatMap(([serverName, serverTools]) =>
-        serverTools.map(tool => ({
-          name: `${serverName}:${tool.name}`,
+        serverTools.map((tool) => ({
+          name: sanitizeToolName(`${serverName}:${tool.name}`),
           description: tool.description || tool.name,
-          parameters: tool.inputSchema
+          parameters: tool.inputSchema,
+          originalName: `${serverName}:${tool.name}` // Optionally keep original for mapping
         }))
       );
-
+    // Build sanitized->original map
+    const sanitizedNameMap = getSanitizedToolNameMap(tools, activeServices);
     const assistantMessage: Message = {
       id: uuidv4(),
       session_id: currentSessionId,
@@ -415,17 +441,15 @@ export function LLMChatInterface() {
       timestamp: new Date().toISOString(),
       isStreaming: true
     };
-
-    setMessages(prev => [...prev, assistantMessage]);
-
+    setMessages((prev: Message[]) => [...prev, assistantMessage]);
     try {
       await llmChatService.sendMessage(
         selectedProvider,
-        [...messages, userMessage],
+        buildLLMMessages([...messages, userMessage]),
         selectedModel,
         availableTools,
         (chunk: string) => {
-          setMessages(prev => {
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
@@ -436,7 +460,7 @@ export function LLMChatInterface() {
           });
         },
         (reasoningChunk: string) => {
-          setMessages(prev => {
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
@@ -455,16 +479,19 @@ export function LLMChatInterface() {
           };
         }>) => {
           if (!toolCalls || toolCalls.length === 0) return;
-
-          setMessages(prev => {
+          // Patch tool calls to always have originalName
+          const patchedToolCalls = toolCalls.map(tc => ({
+            ...tc,
+            function: {
+              ...tc.function,
+              originalName: sanitizedNameMap[tc.function.name] || tc.function.name
+            }
+          }));
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
-              lastMessage.toolCalls = toolCalls.map(tc => ({
-                id: tc.id,
-                type: tc.type,
-                function: tc.function
-              }));
+              lastMessage.toolCalls = patchedToolCalls;
               lastMessage.isStreaming = false;
               // Set empty content for messages with tool calls, let UI handle display
               if (!lastMessage.content.trim() && lastMessage.toolCalls.length > 0) {
@@ -473,12 +500,11 @@ export function LLMChatInterface() {
             }
             return updated;
           });
-
           // Note: Don't save message here, wait for onComplete to save uniformly
         },
         async (message: string) => {
           let finalMessageData: Message | null = null;
-          setMessages(prev => {
+          setMessages((prev: Message[]) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage && lastMessage.sender === 'bot') {
@@ -516,21 +542,20 @@ export function LLMChatInterface() {
           toast.error(t('errors.llm_request_failed', { error: error.message }));
           setIsGenerating(false);
 
-          setMessages(prev => prev.filter(msg => !(msg.sender === 'bot' && !msg.content && !msg.toolCalls)));
+          setMessages((prev: Message[]) => prev.filter((msg: Message) => !(msg.sender === 'bot' && !msg.content && !msg.toolCalls)));
         }
       );
     } catch {
       toast.error(t('errors.llm_request_failed', { error: 'Unknown error' }));
       setIsGenerating(false);
-      setMessages(prev => prev.filter(msg => !(msg.sender === 'bot' && !msg.content && !msg.toolCalls)));
+      setMessages((prev: Message[]) => prev.filter((msg: Message) => !(msg.sender === 'bot' && !msg.content && !msg.toolCalls)));
     }
   };
 
   const handleStop = () => {
     llmChatService.cancelCurrentRequest();
     setIsGenerating(false);
-
-    setMessages(prev => {
+    setMessages((prev: Message[]) => {
       const updated = [...prev];
       const lastMessage = updated[updated.length - 1];
       if (lastMessage && lastMessage.sender === 'bot' && lastMessage.isStreaming) {
@@ -552,7 +577,7 @@ export function LLMChatInterface() {
       try {
         const response = await getCurrentUser();
         setUserInfo(response.data);
-      } catch {
+      } catch (error) {
         // Optionally handle error
       }
     };
@@ -563,6 +588,43 @@ export function LLMChatInterface() {
   const canShowLLM =
     llmConfigAdminOnly === 'N' ||
     (llmConfigAdminOnly === 'Y' && userInfo?.role === 'admin');
+
+  // Load system prompt on mount (user-level, not session-level)
+  useEffect(() => {
+    (async () => {
+      try {
+        const prompt = await getSystemPrompt();
+        setSystemPrompt(prompt);
+      } catch (error) {
+        setSystemPrompt('');
+      }
+    })();
+  }, []);
+
+  // Utility to sanitize tool names for VertexAI/Gemini
+  function sanitizeToolName(name: string): string {
+    // Only allow [a-zA-Z0-9_], must start with a letter or underscore
+    let sanitized = name.replace(/[^a-zA-Z0-9_]/g, '_');
+    if (!/^[a-zA-Z_]/.test(sanitized)) {
+      sanitized = '_' + sanitized;
+    }
+    return sanitized;
+  }
+
+  // Build a mapping from sanitized tool names to original names
+  function getSanitizedToolNameMap(tools: Record<string, Tool[]>, activeServices: string[]): Record<string, string> {
+    const map: Record<string, string> = {};
+    (Object.entries(tools) as [string, Tool[]][]) // serverName, Tool[]
+      .filter(([serverName]) => activeServices.includes(serverName))
+      .forEach(([serverName, serverTools]) => {
+        serverTools.forEach((tool) => {
+          const original = `${serverName}:${tool.name}`;
+          const sanitized = sanitizeToolName(original);
+          map[sanitized] = original;
+        });
+      });
+    return map;
+  }
 
   return (
     <div className="flex h-[calc(100vh-8rem)]">
@@ -606,7 +668,7 @@ export function LLMChatInterface() {
                   className="w-40"
                   size="sm"
                 >
-                  {enabledProviders.map((provider) => (
+                  {enabledProviders.map((provider: LLMProvider) => (
                     <SelectItem key={provider.id} textValue={provider.name}>
                       {provider.name}
                     </SelectItem>
@@ -632,8 +694,8 @@ export function LLMChatInterface() {
                     isDisabled={!selectedProvider.models.length}
                   >
                     {selectedProvider.models
-                      .filter(model => model.enabled || model.id === selectedModel)
-                      .map((model) => (
+                      .filter((model: any) => model.enabled || model.id === selectedModel)
+                      .map((model: any) => (
                         <SelectItem key={model.id} textValue={model.name || model.id}>
                           <div className="flex items-center justify-between w-full">
                             <span className="truncate">{model.name || model.id}</span>
@@ -647,19 +709,65 @@ export function LLMChatInterface() {
                       ))}
                   </Select>
                 )}
+
+                {/* System prompt only here, reduced width */}
+                <div className="flex items-center gap-2 ml-4 max-w-xs" style={{ minWidth: 0 }}>
+                  <label className="block text-xs font-medium mb-0" htmlFor="system-prompt-input">
+                    {t('chat.systemPrompt')}
+                  </label>
+                  <button
+                    type="button"
+                    className="truncate bg-transparent border-none p-0 m-0 text-sm text-muted-foreground hover:underline max-w-[100px]"
+                    onClick={() => {
+                      setSystemPromptDraft(systemPrompt);
+                      setIsSystemPromptModalOpen(true);
+                    }}
+                    title={systemPrompt}
+                    style={{ cursor: 'pointer' }}
+                    disabled={isGenerating}
+                  >
+                    {systemPrompt ? systemPrompt : t('chat.systemPromptPlaceholder')}
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setSystemPromptDraft(systemPrompt);
+                      setIsSystemPromptModalOpen(true);
+                    }}
+                    isIconOnly
+                    disabled={isGenerating}
+                    aria-label={t('chat.editSystemPrompt')}
+                    className="mr-2"
+                  >
+                    <LocalIcon icon="lucide:pencil" className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Authorization token textbox moved here, left of MCP Server dropdown */}
+                <Input
+                  id="auth-token-input"
+                  className="w-64 mr-2"
+                  size="sm"
+                  type="text"
+                  value={authToken}
+                  onChange={e => setAuthToken(e.target.value)}
+                  placeholder={t('chat.authTokenPlaceholder') || 'Auth Token'}
+                  disabled={isGenerating}
+                  aria-label={t('chat.authToken') || 'Authorization Token'}
+                />
                 <Select
                   label={t('chat.mcpServers')}
                   placeholder={t('chat.selectMCPServers')}
                   selectionMode="multiple"
                   selectedKeys={activeServices}
-                  onSelectionChange={(keys) => setActiveServices(Array.from(keys) as string[])}
+                  onSelectionChange={(keys: any) => setActiveServices(Array.from(keys) as string[])}
                   className="w-48"
                   size="sm"
                 >
-                  {mcpServers.map((server) => (
+                  {mcpServers.map((server: Gateway) => (
                     <SelectItem key={server.name} textValue={server.name}>
                       {server.name}
                     </SelectItem>
@@ -680,6 +788,54 @@ export function LLMChatInterface() {
                 )}
               </div>
             </div>
+
+            {/* System Prompt Modal */}
+            {isSystemPromptModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div className="bg-background rounded-lg shadow-lg w-full max-w-lg p-6 relative">
+                  <button
+                    className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setIsSystemPromptModalOpen(false)}
+                    aria-label={t('common.close')}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <h2 className="text-lg font-semibold mb-2">{t('chat.systemPrompt')}</h2>
+                  <textarea
+                    id="system-prompt-modal-input"
+                    className="w-full border rounded p-2 text-sm mb-4 bg-background/50"
+                    rows={8}
+                    value={systemPromptDraft}
+                    onChange={e => setSystemPromptDraft(e.target.value)}
+                    placeholder={t('chat.systemPromptPlaceholder')}
+                    disabled={isGenerating}
+                    style={{ resize: 'vertical' }}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="flat"
+                      onPress={() => setIsSystemPromptModalOpen(false)}
+                      disabled={isGenerating}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      color="primary"
+                      onPress={async () => {
+                        setSystemPrompt(systemPromptDraft);
+                        setIsSystemPromptModalOpen(false);
+                        try {
+                          await saveSystemPrompt(systemPromptDraft);
+                        } catch {}
+                      }}
+                      disabled={isGenerating}
+                    >
+                      {t('common.save')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Experimental warning */}
             <div className="px-4 py-3 bg-warning-50 border-b border-warning-200">

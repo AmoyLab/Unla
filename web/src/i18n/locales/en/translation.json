@@ -417,6 +417,10 @@
     "delete_failed": "Failed to delete chat session",
     "rename_session": "Rename Chat Session",
     "session_title_placeholder": "Enter new session title"
+    "systemPrompt": "System Prompt",
+    "systemPromptPlaceholder": "Set a custom system prompt for the assistant (optional)",
+    "authTokenPlaceholder": "Enter authentication token",
+    "authToken": "Authentication Token"
   },
   "users": {
     "title": "User Management",

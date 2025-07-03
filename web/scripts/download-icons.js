@@ -18,6 +18,7 @@ const icons = [
   'lucide:loader-2', 'lucide:arrow-right', 'lucide:copy', 'lucide:external-link',
   'lucide:send', 'lucide:route', 'lucide:terminal', 'lucide:radio', 'lucide:globe',
   'lucide:wrench', 'lucide:trash', 'lucide:upload', 'lucide:play',
+  'lucide:pencil',
   
   // Material Design icons
   'mdi:wechat', 'mdi:github', 'mdi:book-open-page-variant',

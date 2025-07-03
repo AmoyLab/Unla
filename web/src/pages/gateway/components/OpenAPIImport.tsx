@@ -5,8 +5,8 @@ import { useDropzone } from 'react-dropzone';
 
 import LocalIcon from '@/components/LocalIcon';
 import { importOpenAPI, getTenants } from '@/services/api';
-import { toast } from "@/utils/toast.ts";
 import type { Tenant } from '@/types/gateway';
+import { toast } from "@/utils/toast.ts";
 
 interface OpenAPIImportProps {
   onSuccess?: () => void;
