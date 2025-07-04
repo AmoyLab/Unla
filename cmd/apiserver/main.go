@@ -220,6 +220,9 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		protected.DELETE("/chat/sessions/:sessionId", chatHandler.HandleDeleteChatSession)
 		protected.PUT("/chat/sessions/:sessionId/title", chatHandler.HandleUpdateChatSessionTitle)
 		protected.POST("/chat/messages", chatHandler.HandleSaveChatMessage)
+
+		// Default LLM provider endpoint
+		protected.GET("/defaultllmprovider", chatHandler.HandleDefaultLLMProviders)
 	}
 
 	// Public runtime config endpoint for frontend
