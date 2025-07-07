@@ -78,7 +78,11 @@ const LLMSettings: React.FC = () => {
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   // 搜索过滤后的 provider，启用的在前
   const filteredProviders = providers
-    .filter(provider => {
+    .filter((provider: LLMProvider) => {
+      // Exclude the default provider from the list
+      if (provider.id === 'custom_default') return false;
+      
+      // Then apply search filter
       if (!searchQuery.trim()) return true;
       const query = searchQuery.toLowerCase();
       return (
@@ -86,7 +90,7 @@ const LLMSettings: React.FC = () => {
         (provider.description && provider.description.toLowerCase().includes(query))
       );
     })
-    .sort((a, b) => {
+    .sort((a: LLMProvider, b: LLMProvider) => {
       // 启用的排在前面
       if (a.enabled && !b.enabled) return -1;
       if (!a.enabled && b.enabled) return 1;
