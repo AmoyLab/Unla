@@ -64,9 +64,6 @@ data:
   SESSION_REDIS_TOPIC: {{ .Values.config.SESSION_REDIS_TOPIC | quote }}
   SESSION_REDIS_TTL: {{ .Values.config.SESSION_REDIS_TTL | quote }}
 
-  OPENAI_BASE_URL: {{ .Values.config.OPENAI_BASE_URL | quote }}
-  OPENAI_MODEL: {{ .Values.config.OPENAI_MODEL | quote }}
-
   MCP_GATEWAY_PID: {{ .Values.config.MCP_GATEWAY_PID | quote }}
   MCP_GATEWAY_PORT: {{ .Values.config.MCP_GATEWAY_PORT | quote }}
 

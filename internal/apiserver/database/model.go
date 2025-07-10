@@ -59,3 +59,14 @@ type UserTenant struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+// SystemPrompt stores a user's system prompt
+// UserID is a foreign key to User.ID and is the primary key
+// Prompt is the text of the system prompt
+// UpdatedAt is the last update time
+// TableName: system_prompts
+type SystemPrompt struct {
+	UserID    uint      `json:"userId" gorm:"primaryKey;index;not null"`
+	Prompt    string    `json:"prompt" gorm:"type:text;not null"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}

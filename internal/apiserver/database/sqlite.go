@@ -35,7 +35,8 @@ func NewSQLite(cfg *config.DatabaseConfig) (Database, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &Tenant{}, &UserTenant{}); err != nil {
+	// Add SystemPrompt to migrations
+	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &Tenant{}, &UserTenant{}, &SystemPrompt{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -280,4 +281,34 @@ func (db *SQLite) DeleteUserTenants(ctx context.Context, userID uint) error {
 	dbSession := getDBFromContext(ctx, db.db)
 
 	return dbSession.Where("user_id = ?", userID).Delete(&UserTenant{}).Error
+}
+
+// --- SystemPrompt persistent methods ---
+
+func (db *SQLite) GetSystemPrompt(ctx context.Context, userID uint) (string, error) {
+	var sp SystemPrompt
+	err := db.db.WithContext(ctx).Where("user_id = ?", userID).First(&sp).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return "", nil // No prompt set yet
+		}
+		return "", err
+	}
+	return sp.Prompt, nil
+}
+
+func (db *SQLite) SaveSystemPrompt(ctx context.Context, userID uint, prompt string) error {
+	var sp SystemPrompt
+	err := db.db.WithContext(ctx).Where("user_id = ?", userID).First(&sp).Error
+	now := time.Now()
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			sp = SystemPrompt{UserID: userID, Prompt: prompt, UpdatedAt: now}
+			return db.db.WithContext(ctx).Create(&sp).Error
+		}
+		return err
+	}
+	sp.Prompt = prompt
+	sp.UpdatedAt = now
+	return db.db.WithContext(ctx).Save(&sp).Error
 }

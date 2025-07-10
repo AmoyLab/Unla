@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import { BUILTIN_PROVIDERS, getProviderDefaultConfig, getProviderModels, getDefaultBaseURL, buildEndpointURL } from '../config/llm-providers-adapter';
-import { LLMProvider, CreateLLMProviderForm, UpdateLLMProviderForm } from '../types/llm';
-
+import api from '../services/api';
+import { LLMProvider, LLMModel, CreateLLMProviderForm, UpdateLLMProviderForm } from '../types/llm';
 
 const LLM_STORAGE_KEY = 'unla_llm_providers';
 
@@ -21,6 +21,25 @@ const getDefaultProviders = (): LLMProvider[] => BUILTIN_PROVIDERS.map(template 
 export const useLLMConfig = () => {
   const [providers, setProviders] = useState<LLMProvider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [defaultProvider, setDefaultProvider] = useState<LLMProvider | null>(null);
+
+  // Fetch default provider from backend on mount
+  useEffect(() => {
+    async function fetchDefaultProvider() {
+      try {
+        const response = await api.get('/defaultllmprovider');
+        const arr = response.data?.configs || response.data?.data || response.data;
+        if (Array.isArray(arr) && arr.length > 0) {
+          setDefaultProvider(arr[0]);
+        } else {
+          setDefaultProvider(null);
+        }
+      } catch {
+        setDefaultProvider(null);
+      }
+    }
+    fetchDefaultProvider();
+  }, []);
 
   // 加载配置
   const loadConfig = useCallback(() => {
@@ -56,22 +75,47 @@ export const useLLMConfig = () => {
           };
         });
         
-        // 添加自定义提供商
+        // 添加自定义提供商（始终将 custom_default 视为自定义提供商）
         const customProviders = savedProviders.filter(p => 
-          !BUILTIN_PROVIDERS.some(template => template.id === p.id)
+          !BUILTIN_PROVIDERS.some(template => template.id === p.id) ||
+          p.id === 'custom_default'
         );
         
+        // 如果有来自 API 的默认提供商，确保它被包含并且是最新的
+        if (defaultProvider && defaultProvider.id === 'custom_default') {
+          const existingDefault = customProviders.findIndex(p => p.id === 'custom_default');
+          if (existingDefault >= 0) {
+            // 更新现有的默认提供商，同时保留启用状态
+            customProviders[existingDefault] = {
+              ...defaultProvider,
+              enabled: customProviders[existingDefault].enabled
+            };
+          } else {
+            // 添加新的默认提供商
+            customProviders.push(defaultProvider);
+          }
+        }
+
         setProviders([...merged, ...customProviders]);
       } else {
-        setProviders(getDefaultProviders());
+        // 如果没有保存的配置，使用内置提供商并在可用时添加默认提供商
+        const initial = getDefaultProviders();
+        if (defaultProvider && defaultProvider.id === 'custom_default') {
+          initial.push(defaultProvider);
+        }
+        setProviders(initial);
       }
     } catch (error) {
       console.error('Failed to load LLM config:', error);
-      setProviders(getDefaultProviders());
+      const initial = getDefaultProviders();
+      if (defaultProvider && defaultProvider.id === 'custom_default') {
+        initial.push(defaultProvider);
+      }
+      setProviders(initial);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [defaultProvider]);
 
   // 保存配置
   const saveConfig = useCallback((newProviders: LLMProvider[]) => {
@@ -122,7 +166,7 @@ export const useLLMConfig = () => {
 
   // 更新提供商
   const updateProvider = useCallback((id: string, data: UpdateLLMProviderForm) => {
-    const newProviders = providers.map(provider => 
+    const newProviders = providers.map((provider: LLMProvider) => 
       provider.id === id 
         ? {
             ...provider,
@@ -136,7 +180,7 @@ export const useLLMConfig = () => {
 
   // 删除提供商
   const deleteProvider = useCallback((id: string) => {
-    const newProviders = providers.filter(provider => provider.id !== id);
+    const newProviders = providers.filter((provider: LLMProvider) => provider.id !== id);
     saveConfig(newProviders);
   }, [providers, saveConfig]);
 
@@ -147,7 +191,7 @@ export const useLLMConfig = () => {
 
   // 测试提供商连接
   const testProvider = useCallback(async (id: string): Promise<{ success: boolean; error?: string }> => {
-    const provider = providers.find(p => p.id === id);
+    const provider = providers.find((p: LLMProvider) => p.id === id);
     if (!provider) {
       return { success: false, error: 'Provider not found' };
     }
@@ -217,12 +261,56 @@ export const useLLMConfig = () => {
 
   // 获取启用的提供商
   const getEnabledProviders = useCallback(() => {
-    return providers.filter(provider => provider.enabled);
-  }, [providers]);
+    const enabled = providers.filter((provider: LLMProvider) => provider?.enabled);
+    
+    // Include defaultProvider if it exists and is not already included
+    if (defaultProvider && defaultProvider.enabled !== false) {
+      try {
+
+        // Find if this provider already exists in the enabled list
+        const existingIndex = enabled.findIndex((p: LLMProvider) => p?.id === defaultProvider.id);
+        
+        if (existingIndex >= 0) {
+          // If it exists, merge its config with the default provider's config
+          enabled[existingIndex] = {
+            ...defaultProvider,
+            ...enabled[existingIndex],
+            config: {
+              ...(defaultProvider.config || {}),
+              ...(enabled[existingIndex].config || {})
+            },
+            models: [
+              ...(defaultProvider.models || []),
+              ...((enabled[existingIndex].models || []).filter((m: LLMModel & { isCustom?: boolean }) => m?.isCustom))
+            ].filter((m, i, arr) => arr.findIndex(item => item.id === m.id) === i), // Remove duplicates
+            settings: {
+              ...(defaultProvider.settings || {}),
+              ...(enabled[existingIndex].settings || {})
+            }
+          };
+          return enabled;
+        } else {
+          // If it doesn't exist, add it to the start of the array
+          const completeDefaultProvider = {
+            ...defaultProvider,
+            config: defaultProvider.config || {},
+            models: defaultProvider.models || [],
+            settings: defaultProvider.settings || {}
+          };
+          return [completeDefaultProvider, ...enabled];
+        }
+      } catch (err) {
+        console.error('[useLLMConfig] Error merging defaultProvider:', err);
+        return enabled;
+      }
+    }
+    
+    return enabled;
+  }, [providers, defaultProvider]);
 
   // 获取单个提供商
   const getProvider = useCallback((id: string) => {
-    return providers.find(provider => provider.id === id);
+    return providers.find((provider: LLMProvider) => provider.id === id);
   }, [providers]);
 
   // 重置为默认配置
@@ -293,6 +381,7 @@ export const useLLMConfig = () => {
     resetToDefault,
     exportConfig,
     importConfig,
-    reload: loadConfig
+    reload: loadConfig,
+    defaultProvider
   };
 };

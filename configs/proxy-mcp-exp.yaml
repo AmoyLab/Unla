@@ -3,7 +3,7 @@ tenant: "default"
 
 routers:
   - server: "amap-maps"
-    prefix: "/mcp/stdio-proxy"
+    prefix: "/gateway/stdio-proxy"
     cors:
       allowOrigins:
         - "*"
@@ -15,13 +15,13 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"        
+        - "mcp-protocol-version"
       exposeHeaders:
         - "Mcp-Session-Id"
         - "mcp-protocol-version"
       allowCredentials: true
   - server: "mock-user-sse"
-    prefix: "/mcp/sse-proxy"
+    prefix: "/gateway/sse-proxy"
     cors:
       allowOrigins:
         - "*"
@@ -39,7 +39,7 @@ routers:
         - "mcp-protocol-version"
       allowCredentials: true
   - server: "mock-user-mcp"
-    prefix: "/mcp/streamable-http-proxy"
+    prefix: "/gateway/streamable-http-proxy"
     cors:
       allowOrigins:
         - "*"

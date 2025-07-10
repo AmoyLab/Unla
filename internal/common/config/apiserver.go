@@ -10,7 +10,6 @@ import (
 type (
 	APIServerConfig struct {
 		Database   DatabaseConfig   `yaml:"database"`
-		OpenAI     OpenAIConfig     `yaml:"openai"`
 		Storage    StorageConfig    `yaml:"storage"`
 		Notifier   NotifierConfig   `yaml:"notifier"`
 		Logger     LoggerConfig     `yaml:"logger"`
@@ -32,12 +31,6 @@ type (
 		Password string `yaml:"password"` // password
 		DBName   string `yaml:"dbname"`   // database name
 		SSLMode  string `yaml:"sslmode"`  // disable (for postgres)
-	}
-
-	OpenAIConfig struct {
-		APIKey  string `yaml:"api_key"`
-		Model   string `yaml:"model"`
-		BaseURL string `yaml:"base_url"`
 	}
 
 	JWTConfig struct {

@@ -52,7 +52,7 @@ func TestConverter_Convert(t *testing.T) {
 	// Verify the converted configuration
 	//assert.Equal(t, "Test API", config.Name)
 	assert.Equal(t, 1, len(config.Routers))
-	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/gateway/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -92,7 +92,7 @@ paths:
 	// Verify the converted configuration
 	//assert.Equal(t, "Test API", config.Name)
 	assert.Equal(t, 1, len(config.Routers))
-	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/gateway/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -162,7 +162,7 @@ func TestConverter_ConvertOpenapi2(t *testing.T) {
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
-	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/gateway/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -205,7 +205,7 @@ paths:
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
-	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/gateway/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -370,7 +370,7 @@ func TestConverter_ConvertOpenapi31(t *testing.T) {
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
-	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/gateway/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -491,7 +491,7 @@ components:
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
-	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/gateway/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))

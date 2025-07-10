@@ -128,7 +128,7 @@ export function RouterConfig({
             onChange={(e) => addCorsItem('allowMethods', e.target.value)}
           >
             {['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'].map(method => (
-              <SelectItem key={method}>{method}</SelectItem>
+              <SelectItem key={method} textValue={method}>{method}</SelectItem>
             ))}
           </Select>
         </div>
@@ -282,12 +282,12 @@ export function RouterConfig({
                 >
                   <>
                     {(parsedConfig?.servers || []).map(server => (
-                      <SelectItem key={server.name}>
+                      <SelectItem key={server.name} textValue={server.name}>
                         {server.name}
                       </SelectItem>
                     ))}
                     {(parsedConfig?.mcpServers || []).map(server => (
-                      <SelectItem key={server.name}>
+                      <SelectItem key={server.name} textValue={server.name}>
                         {server.name}
                       </SelectItem>
                     ))}
@@ -372,7 +372,7 @@ export function RouterConfig({
                       aria-label={t('gateway.auth_mode')}
                       isDisabled={true}
                     >
-                      <SelectItem key="oauth2">OAuth2</SelectItem>
+                      <SelectItem key="oauth2" textValue="OAuth2">OAuth2</SelectItem>
                     </Select>
                   </div>
                 )}

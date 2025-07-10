@@ -8,7 +8,7 @@ spec:
     - host: localhost
       http:
         paths:
-          - path: /mcp
+          - path: /gateway
             pathType: Prefix
             backend:
               service:

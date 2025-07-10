@@ -46,11 +46,6 @@ spec:
                 key: database
           - name: APISERVER_DB_SSL_MODE
             value: {{ .Values.postgres.env.SSL_MODE | quote }}
-          - name: OPENAI_API_KEY
-            valueFrom:
-              secretKeyRef:
-                name: mcp-gateway-secret
-                key: open_api_key
           - name: APISERVER_JWT_SECRET_KEY
             valueFrom:
               secretKeyRef:
@@ -84,7 +79,7 @@ spec:
             value: {{ $value | quote }}
           {{- end }}
           {{- end }}
-          
+
           # Environment variables from secrets
           {{- if .Values.secretEnv }}
           {{- range $key, $value := .Values.secretEnv }}

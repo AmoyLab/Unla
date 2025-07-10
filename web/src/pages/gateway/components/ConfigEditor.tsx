@@ -151,7 +151,7 @@ export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditin
                   </SelectItem>
                 ))
               ) : (
-                <SelectItem key="default">default</SelectItem>
+                <SelectItem key="default" textValue="default">default</SelectItem>
               )}
             </Select>
 

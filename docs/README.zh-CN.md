@@ -5,21 +5,11 @@
 [![English](https://img.shields.io/badge/English-Click-yellow)](../README.md)
 [![简体中文](https://img.shields.io/badge/简体中文-点击查看-orange)](README.zh-CN.md)
 [![Release](https://img.shields.io/github/v/release/mcp-ecosystem/mcp-gateway)](https://github.com/amoylab/unla/releases)
-[![文档](https://img.shields.io/badge/文档-在线阅读-blue)](https://mcp.ifuryst.com)
+[![文档](https://img.shields.io/badge/文档-在线阅读-blue)](https://docs.unla.amoylab.com)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mcp-ecosystem/mcp-gateway)
 [![Discord](https://img.shields.io/badge/Discord-加入讨论-5865F2?logo=discord&logoColor=white)](https://discord.gg/udf69cT9TY)
 [![Go Report Card](https://goreportcard.com/badge/github.com/amoylab/unla)](https://goreportcard.com/report/github.com/amoylab/unla)
 [![Snyk Security](https://img.shields.io/badge/Snyk-Secure-blueviolet?logo=snyk)](https://snyk.io/test/github/mcp-ecosystem/mcp-gateway)
-
----
-
-## 🚀 在 Product Hunt 上支持 MCP Gateway！
-
-**MCP Gateway** 已经在 Product Hunt 上线啦！
-如果你喜欢这个项目，欢迎来给我们投一票 ❤️
-你的支持对我们意义重大，也能让更多人看到它！
-
-<a href="https://www.producthunt.com/posts/mcp-gateway?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-mcp&#0045;gateway" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=958310&theme=light&t=1745767484477" alt="MCP&#0032;Gateway - Turn&#0032;APIs&#0032;into&#0032;MCP&#0032;endpoints&#0044;without&#0032;changing&#0032;a&#0032;line&#0032;of&#0032;code | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
 ---
 
@@ -44,18 +34,16 @@ https://github.com/user-attachments/assets/69480eda-7aa7-4be7-9bc7-cae57fe16c54
 
 ## 🚀 快速开始
 
-Unla 提供开箱即用的 Docker 启动方式。完整部署与配置说明请参考 [文档](https://mcp.ifuryst.com/getting-started/quick-start)。
+Unla 提供开箱即用的 Docker 启动方式。完整部署与配置说明请参考 [文档](https://docs.unla.amoylab.com/getting-started/quick-start)。
 
 ### 一键启动 Unla
 
 配置环境变量：
 
 ```bash
-export OPENAI_API_KEY="sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
-export OPENAI_MODEL="gpt-4o-mini"
-export APISERVER_JWT_SECRET_KEY="fec6d38f73d4211318e7c85617f0e333PlsChangeMe"
+export APISERVER_JWT_SECRET_KEY="changeme-please-generate-a-random-secret"
 export SUPER_ADMIN_USERNAME="admin"
-export SUPER_ADMIN_PASSWORD="297df52fbc321ebf7198d497fe1c9206PlsChangeMe"
+export SUPER_ADMIN_PASSWORD="changeme-please-use-a-secure-password"
 ```
 
 一键拉起：
@@ -70,8 +58,6 @@ docker run -d \
   -p 5236:5236 \
   -e ENV=production \
   -e TZ=Asia/Shanghai \
-  -e OPENAI_API_KEY=${OPENAI_API_KEY} \
-  -e OPENAI_MODEL=${OPENAI_MODEL} \
   -e APISERVER_JWT_SECRET_KEY=${APISERVER_JWT_SECRET_KEY} \
   -e SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME} \
   -e SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD} \
@@ -82,12 +68,9 @@ docker run -d \
 > 在中国境内的设备可以使用阿里云仓库的镜像并自定义模型（这边示例是千问）：
 >
 > ```bash
-> export OPENAI_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1/"
-> export OPENAI_API_KEY="sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
-> export OPENAI_MODEL="qwen-turbo"
-> export APISERVER_JWT_SECRET_KEY="fec6d38f73d4211318e7c85617f0e333PlsChangeMe"
+> export APISERVER_JWT_SECRET_KEY="changeme-please-generate-a-random-secret"
 > export SUPER_ADMIN_USERNAME="admin"
-> export SUPER_ADMIN_PASSWORD="297df52fbc321ebf7198d497fe1c9206PlsChangeMe"
+> export SUPER_ADMIN_PASSWORD="changeme-please-use-a-secure-password"
 > ```
 >
 > ```bash
@@ -100,9 +83,6 @@ docker run -d \
 >   -p 5236:5236 \
 >   -e ENV=production \
 >   -e TZ=Asia/Shanghai \
->   -e OPENAI_BASE_URL=${OPENAI_BASE_URL} \
->   -e OPENAI_API_KEY=${OPENAI_API_KEY} \
->   -e OPENAI_MODEL=${OPENAI_MODEL} \
 >   -e APISERVER_JWT_SECRET_KEY=${APISERVER_JWT_SECRET_KEY} \
 >   -e SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME} \
 >   -e SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD} \
@@ -138,7 +118,7 @@ docker run -d \
 1. 使用 Web 界面中的 MCP Chat 页面
 2. 使用您自己的 MCP Client（**推荐**）
 
-📖 查看完整指南 → [快速开始文档 »](https://mcp.ifuryst.com/getting-started/quick-start)
+📖 查看完整指南 → [快速开始文档 »](https://docs.unla.amoylab.com/getting-started/quick-start)
 
 ---
 
@@ -181,7 +161,7 @@ docker run -d \
 
 更多使用方式、配置示例、集成说明请访问文档站点：
 
-👉 **https://mcp.ifuryst.com**
+👉 **https://docs.unla.amoylab.com**
 
 ---
 

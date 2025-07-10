@@ -271,7 +271,7 @@ export function ConfigVersionsPage() {
           placeholder={t('mcp.configVersions.select_tenant')}
         >
           {tenants.map(tenant => (
-            <SelectItem key={tenant.name}>{tenant.name}</SelectItem>
+            <SelectItem key={tenant.name} textValue={tenant.name}>{tenant.name}</SelectItem>
           ))}
         </Select>
         <Select
@@ -282,7 +282,7 @@ export function ConfigVersionsPage() {
           placeholder={t('mcp.configVersions.select_config')}
         >
           {configNames.map(name => (
-            <SelectItem key={name}>{name}</SelectItem>
+            <SelectItem key={name} textValue={name}>{name}</SelectItem>
           ))}
         </Select>
       </div>

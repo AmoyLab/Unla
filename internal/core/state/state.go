@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ifuryst/lol"
 	"github.com/amoylab/unla/internal/common/cnst"
@@ -244,7 +245,11 @@ func startMCPServer(ctx context.Context, logger *zap.Logger, prefix string, mcpS
 		return
 	}
 
-	if err := transport.Start(ctx, template.NewContext()); err != nil {
+	// Create a new context to avoid being canceled when the main context is canceled during shutdown
+	startCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := transport.Start(startCtx, template.NewContext()); err != nil {
 		logger.Error("failed to start server for preinstall",
 			zap.String("prefix", prefix),
 			zap.String("command", mcpServer.Command),
@@ -258,7 +263,7 @@ func startMCPServer(ctx context.Context, logger *zap.Logger, prefix string, mcpS
 
 		if needStop {
 			// Stop the server after successful start
-			if err := transport.Stop(ctx); err != nil {
+			if err := transport.Stop(startCtx); err != nil {
 				logger.Error("failed to stop server for preinstall",
 					zap.String("prefix", prefix),
 					zap.String("command", mcpServer.Command),

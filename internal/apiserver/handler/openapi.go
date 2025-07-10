@@ -1,6 +1,7 @@
 package handler
 
 import (
+        "github.com/amoylab/unla/internal/common/config"
 	"github.com/gin-gonic/gin"
 	"github.com/amoylab/unla/internal/apiserver/database"
 	"github.com/amoylab/unla/internal/i18n"
@@ -65,13 +66,20 @@ func (h *OpenAPI) HandleImport(c *gin.Context) {
 		return
 	}
 
-	// Create converter
+	// Read tenant and prefix from form
+	tenant := c.PostForm("tenantId")
+	prefix := c.PostForm("prefix")
+
 	h.logger.Debug("creating OpenAPI converter")
 	converter := openapi.NewConverter()
 
-	// Convert the OpenAPI specification
-	h.logger.Debug("converting OpenAPI specification")
-	config, err := converter.Convert(content)
+	// Use provided tenant/prefix if not empty, else use default logic
+	var config *config.MCPConfig
+	if tenant == "" && prefix == "" {
+		config, err = converter.Convert(content)
+	} else {
+		config, err = converter.ConvertWithOptions(content, tenant, prefix)
+	}
 	if err != nil {
 		h.logger.Error("failed to convert OpenAPI specification", zap.Error(err))
 		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Failed to convert OpenAPI specification: "+err.Error()))

@@ -48,7 +48,7 @@ data:
     SESSION_REDIS_PASSWORD: "UseStrongPasswordIsAGoodPractice"
     SESSION_REDIS_DB: "0"
     SESSION_REDIS_TOPIC: "mcp-gateway:session"
-    SESSION_REDIS_PREFIX: 
+    SESSION_REDIS_PREFIX:
     SESSION_REDIS_TTL: "24h"
 
     MCP_GATEWAY_PORT: "5235"
@@ -57,4 +57,4 @@ data:
     APISERVER_JWT_DURATION: "24h"
 
     SUPER_ADMIN_USERNAME: "admin"
-    SUPER_ADMIN_PASSWORD: "297df52fbc321ebf7198d497fe1c9206PlsChangeMe"
+    SUPER_ADMIN_PASSWORD: "changeme-please-use-a-secure-password"

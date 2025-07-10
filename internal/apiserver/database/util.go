@@ -26,7 +26,7 @@ func InitDefaultTenant(db *gorm.DB) error {
 	// Create default tenant
 	defaultTenant := &Tenant{
 		Name:        "default",
-		Prefix:      "/mcp",
+		Prefix:      "/gateway",
 		Description: "Default tenant for MCP Gateway",
 		IsActive:    true,
 		CreatedAt:   time.Now(),

@@ -17,7 +17,6 @@ import (
 	"github.com/amoylab/unla/internal/mcp/storage"
 	"github.com/amoylab/unla/internal/mcp/storage/notifier"
 	"github.com/amoylab/unla/pkg/logger"
-	"github.com/amoylab/unla/pkg/openai"
 	"github.com/amoylab/unla/pkg/version"
 
 	"github.com/gin-gonic/gin"
@@ -82,11 +81,6 @@ func initNotifier(ctx context.Context, logger *zap.Logger, cfg *config.NotifierC
 	return ntf
 }
 
-// initOpenAI initializes the OpenAI client
-func initOpenAI(cfg *config.OpenAIConfig) *openai.Client {
-	return openai.NewClient(cfg)
-}
-
 // initDatabase initializes the database connection
 func initDatabase(logger *zap.Logger, cfg *config.DatabaseConfig) database.Database {
 	logger.Info("Initializing database", zap.String("type", cfg.Type))
@@ -139,7 +133,7 @@ func initSuperAdmin(ctx context.Context, db database.Database, cfg *config.APISe
 }
 
 // initRouter initializes the HTTP router and handlers
-func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier, openaiClient *openai.Client, cfg *config.APIServerConfig, logger *zap.Logger) *gin.Engine {
+func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier, cfg *config.APIServerConfig, logger *zap.Logger) *gin.Engine {
 	r := gin.Default()
 
 	// Convert APIServerConfig to MCPGatewayConfig
@@ -167,6 +161,7 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		chatHandler := apiserverHandler.NewChat(db, logger)
 		mcpHandler := apiserverHandler.NewMCP(db, store, ntf, logger)
 		openapiHandler := apiserverHandler.NewOpenAPI(db, store, ntf, logger)
+		systemPromptHandler := apiserverHandler.NewSystemPrompt(db, logger)
 
 		// Auth routes
 		protected.POST("/auth/change-password", authH.ChangePassword)
@@ -220,6 +215,13 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		protected.DELETE("/chat/sessions/:sessionId", chatHandler.HandleDeleteChatSession)
 		protected.PUT("/chat/sessions/:sessionId/title", chatHandler.HandleUpdateChatSessionTitle)
 		protected.POST("/chat/messages", chatHandler.HandleSaveChatMessage)
+
+		// System prompt routes
+		protected.GET("/chat/systemprompt", systemPromptHandler.GetSystemPrompt)
+		protected.PUT("/chat/systemprompt", systemPromptHandler.SaveSystemPrompt)
+
+		// Default LLM provider endpoint
+		protected.GET("/defaultllmprovider", chatHandler.HandleDefaultLLMProviders)
 	}
 
 	// Public runtime config endpoint for frontend
@@ -269,7 +271,6 @@ func run() {
 
 	// Initialize services
 	ntf := initNotifier(ctx, logger, &cfg.Notifier)
-	openaiClient := initOpenAI(&cfg.OpenAI)
 	db := initDatabase(logger, &cfg.Database)
 	defer db.Close()
 
@@ -284,7 +285,7 @@ func run() {
 	store := initStore(logger, &cfg.Storage)
 
 	// Initialize router and start server
-	router := initRouter(db, store, ntf, openaiClient, cfg, logger)
+	router := initRouter(db, store, ntf, cfg, logger)
 	startServer(logger, router)
 }
 

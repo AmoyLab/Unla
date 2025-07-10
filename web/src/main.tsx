@@ -35,6 +35,8 @@ loader.config({
 loader.init().then(() => {
   // Monaco is now loaded and available
   console.log('Monaco Editor loaded from local files');
+}).catch((error) => {
+  console.error('Failed to load Monaco Editor:', error);
 });
 
 // Initialize theme immediately before React renders
@@ -43,18 +45,6 @@ if (savedTheme === 'dark') {
   document.documentElement.classList.add('dark');
 } else if (savedTheme === 'light') {
   document.documentElement.classList.remove('dark');
-}
-
-// Show loading screen immediately
-const rootElement = document.getElementById("root");
-if (rootElement) {
-  ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
-      <HeroUIProvider>
-        <LoadingScreen />
-      </HeroUIProvider>
-    </React.StrictMode>
-  );
 }
 
 // Define proper types for RUNTIME_CONFIG
@@ -84,6 +74,24 @@ declare global {
     RUNTIME_CONFIG: RuntimeConfig;
   }
 }
+
+// Get root element and create root instance only once
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Root element not found");
+}
+
+// Create root instance only once
+const root = ReactDOM.createRoot(rootElement);
+
+// Show loading screen immediately
+root.render(
+  <React.StrictMode>
+    <HeroUIProvider>
+      <LoadingScreen />
+    </HeroUIProvider>
+  </React.StrictMode>
+);
 
 // Fetch runtime config before rendering the app
 const fetchRuntimeConfig = async () => {
@@ -121,26 +129,22 @@ const fetchRuntimeConfig = async () => {
     // Use defaults on error
     window.RUNTIME_CONFIG = { ...defaultRuntimeConfig };
   }
-  // Render the main application
+
+  // Render the main application using the existing root
   if (isDev) {
     console.log("[RUNTIME_CONFIG] Rendering React app...");
   }
 
-  const rootElement = document.getElementById("root");
-  if (rootElement) {
-    ReactDOM.createRoot(rootElement).render(
-      <React.StrictMode>
-        <HeroUIProvider>
-          <ToastProvider placement="bottom-right" />
-          <main className="text-foreground bg-background h-screen overflow-hidden">
-            <App />
-          </main>
-        </HeroUIProvider>
-      </React.StrictMode>
-    );
-  } else {
-    console.error("[RUNTIME_CONFIG] Root element not found");
-  }
+  root.render(
+    <React.StrictMode>
+      <HeroUIProvider>
+        <ToastProvider placement="bottom-right" />
+        <main className="text-foreground bg-background h-screen overflow-hidden">
+          <App />
+        </main>
+      </HeroUIProvider>
+    </React.StrictMode>
+  );
 };
 
 // Start loading the runtime configuration

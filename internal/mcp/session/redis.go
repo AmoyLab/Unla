@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
+	"github.com/amoylab/unla/pkg/utils"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -34,7 +34,7 @@ var _ Store = (*RedisStore)(nil)
 // NewRedisStore creates a new Redis-based session store
 // func NewRedisStore(logger *zap.Logger, addr, username, password string, db int, topic string) (*RedisStore, error) {
 func NewRedisStore(logger *zap.Logger, cfg config.SessionRedisConfig) (*RedisStore, error) {
-	addrs := strings.Split(cfg.Addr, ";")
+	addrs := utils.SplitByMultipleDelimiters(cfg.Addr, ";", ",")
 	redisOptions := &redis.UniversalOptions{
 		Addrs:    addrs,
 		Username: cfg.Username,

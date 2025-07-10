@@ -173,10 +173,10 @@ export function ToolsConfig({
                   onChange={(e) => updateTool(index, 'method', e.target.value)}
                   aria-label={t('gateway.method')}
                 >
-                  <SelectItem key="GET">GET</SelectItem>
-                  <SelectItem key="POST">POST</SelectItem>
-                  <SelectItem key="PUT">PUT</SelectItem>
-                  <SelectItem key="DELETE">DELETE</SelectItem>
+                  <SelectItem key="GET" textValue="GET">GET</SelectItem>
+                  <SelectItem key="POST" textValue="POST">POST</SelectItem>
+                  <SelectItem key="PUT" textValue="PUT">PUT</SelectItem>
+                  <SelectItem key="DELETE" textValue="DELETE">DELETE</SelectItem>
                 </Select>
                 <Input
                   label={t('gateway.endpoint')}
@@ -286,10 +286,10 @@ export function ToolsConfig({
                             updateTool(index, 'args', updatedArgs);
                           }}
                         >
-                          <SelectItem key="body">{t('gateway.position_body')}</SelectItem>
-                          <SelectItem key="query">{t('gateway.position_query')}</SelectItem>
-                          <SelectItem key="path">{t('gateway.position_path')}</SelectItem>
-                          <SelectItem key="form-data">{t('gateway.type_form_data')}</SelectItem>
+                          <SelectItem key="body" textValue={t('gateway.position_body')}>{t('gateway.position_body')}</SelectItem>
+                          <SelectItem key="query" textValue={t('gateway.position_query')}>{t('gateway.position_query')}</SelectItem>
+                          <SelectItem key="path" textValue={t('gateway.position_path')}>{t('gateway.position_path')}</SelectItem>
+                          <SelectItem key="form-data" textValue={t('gateway.type_form_data')}>{t('gateway.type_form_data')}</SelectItem>
                         </Select>
                       </div>
 
@@ -307,11 +307,11 @@ export function ToolsConfig({
                             updateTool(index, 'args', updatedArgs);
                           }}
                         >
-                          <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
-                          <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
-                          <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
-                          <SelectItem key="array">{t('gateway.type_array')}</SelectItem>
-                          <SelectItem key="object">{t('gateway.type_object')}</SelectItem>
+                          <SelectItem key="string" textValue={t('gateway.type_string')}>{t('gateway.type_string')}</SelectItem>
+                          <SelectItem key="number" textValue={t('gateway.type_number')}>{t('gateway.type_number')}</SelectItem>
+                          <SelectItem key="boolean" textValue={t('gateway.type_boolean')}>{t('gateway.type_boolean')}</SelectItem>
+                          <SelectItem key="array" textValue={t('gateway.type_array')}>{t('gateway.type_array')}</SelectItem>
+                          <SelectItem key="object" textValue={t('gateway.type_object')}>{t('gateway.type_object')}</SelectItem>
                         </Select>
 
                         <div className="flex items-center gap-2">
@@ -355,10 +355,10 @@ export function ToolsConfig({
                                   updateTool(index, 'args', updatedArgs);
                                 }}
                               >
-                                <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
-                                <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
-                                <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
-                                <SelectItem key="object">{t('gateway.type_object')}</SelectItem>
+                                <SelectItem key="string" textValue={t('gateway.type_string')}>{t('gateway.type_string')}</SelectItem>
+                                <SelectItem key="number" textValue={t('gateway.type_number')}>{t('gateway.type_number')}</SelectItem>
+                                <SelectItem key="boolean" textValue={t('gateway.type_boolean')}>{t('gateway.type_boolean')}</SelectItem>
+                                <SelectItem key="object" textValue={t('gateway.type_object')}>{t('gateway.type_object')}</SelectItem>
                               </Select>
 
                               {/* 如果数组元素是对象，显示对象属性配置 */}
@@ -444,9 +444,9 @@ export function ToolsConfig({
                                             updateTool(index, 'args', updatedArgs);
                                           }}
                                         >
-                                          <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
-                                          <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
-                                          <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
+                                          <SelectItem key="string" textValue={t('gateway.type_string')}>{t('gateway.type_string')}</SelectItem>
+                                          <SelectItem key="number" textValue={t('gateway.type_number')}>{t('gateway.type_number')}</SelectItem>
+                                          <SelectItem key="boolean" textValue={t('gateway.type_boolean')}>{t('gateway.type_boolean')}</SelectItem>
                                         </Select>
                                       </div>
                                       <div className="lg:col-span-11">
@@ -586,9 +586,9 @@ export function ToolsConfig({
                                         updateTool(index, 'args', updatedArgs);
                                       }}
                                     >
-                                      <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
-                                      <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
-                                      <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
+                                      <SelectItem key="string" textValue={t('gateway.type_string')}>{t('gateway.type_string')}</SelectItem>
+                                      <SelectItem key="number" textValue={t('gateway.type_number')}>{t('gateway.type_number')}</SelectItem>
+                                      <SelectItem key="boolean" textValue={t('gateway.type_boolean')}>{t('gateway.type_boolean')}</SelectItem>
                                     </Select>
                                   </div>
                                   <div className="lg:col-span-11">

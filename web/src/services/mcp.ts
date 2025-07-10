@@ -39,7 +39,7 @@ class MCPService {
   private configs: Map<string, MCPClientConfig> = new Map();
   private lastEventIds: Map<string, string> = new Map();
 
-  async connect(config: MCPClientConfig): Promise<Client> {
+  async connect(config: MCPClientConfig, authToken?: string, headerName: string = "Authorization"): Promise<Client> {
     const { name: serverName, prefix, onError, onNotification } = config;
 
     // If client exists, return it
@@ -53,11 +53,32 @@ class MCPService {
     try {
       // Create transport and client
       const gatewayBaseUrl = window.RUNTIME_CONFIG?.VITE_MCP_GATEWAY_BASE_URL || '';
-      const serverUrl = new URL(`${gatewayBaseUrl}${prefix}/mcp`, window.location.origin);
+      const serverUrl = new URL(`${gatewayBaseUrl}${prefix}/gateway`, window.location.origin);
+
+      // Build headers for auth
+      let headers: Record<string, string> = {};
+      if (authToken) {
+        if (headerName.toLowerCase() !== "authorization") {
+          headers[headerName] = authToken;
+          headers["x-custom-auth-header"] = headerName;
+        } else {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+      }
+
       const transport = new StreamableHTTPClientTransport(
         serverUrl,
         {
-          sessionId: this.sessionIds.get(serverName)
+          sessionId: this.sessionIds.get(serverName),
+          requestInit: {
+            headers: { ...headers },
+          },
+          reconnectionOptions: {
+            maxReconnectionDelay: 30000,
+            initialReconnectionDelay: 1000,
+            reconnectionDelayGrowFactor: 1.5,
+            maxRetries: 2,
+          },
         }
       );
 
@@ -67,9 +88,9 @@ class MCPService {
       });
 
       // Set up error handler
-      client.onerror = (error) => {
-        onError?.(error);
-        toast.error(t('errors.mcp_server_error', { server: serverName, error: error.message }), {
+      client.onerror = (error: unknown) => {
+        onError?.(error as Error);
+        toast.error(t('errors.mcp_server_error', { server: serverName, error: (error as Error).message }), {
           duration: 3000,
         });
       };
@@ -146,14 +167,15 @@ class MCPService {
         }
       };
 
+      // Prepare options for request
+      const options: { resumptionToken?: string } = this.lastEventIds.get(serverName)
+        ? { resumptionToken: this.lastEventIds.get(serverName) }
+        : {};
+
       const result = await client.request(
         request,
         CallToolResultSchema,
-        this.lastEventIds.get(serverName)
-          ? {
-            resumptionToken: this.lastEventIds.get(serverName),
-          }
-          : undefined
+        options
       ) as CallToolResult;
 
       // Update last event ID if callback provided

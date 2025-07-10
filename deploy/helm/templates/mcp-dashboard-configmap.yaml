@@ -74,11 +74,6 @@ data:
         db: ${APISERVER_NOTIFIER_REDIS_DB:0}
         topic: "${APISERVER_NOTIFIER_REDIS_TOPIC:mcp-gateway:reload}"
 
-    openai:
-      api_key: "${OPENAI_API_KEY}"
-      model: "${OPENAI_MODEL:gpt-4.1}"
-      base_url: "${OPENAI_BASE_URL:https://api.openai.com/v1/}"
-
     # JWT configuration
     jwt:
       secret_key: "${APISERVER_JWT_SECRET_KEY:Pls-Change-Me!}"  # Change this in production

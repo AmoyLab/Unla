@@ -98,11 +98,11 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	// Create a default router for the server
 	router := config.RouterConfig{
 		Server: mcpConfig.Name,
-		Prefix: fmt.Sprintf("/mcp/%s", rs), // Generate a random prefix for each router
+		Prefix: fmt.Sprintf("/gateway/%s", rs), // Generate a random prefix for each router
 		CORS: &config.CORSConfig{
 			AllowOrigins:     []string{"*"},
 			AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-			AllowHeaders:     []string{"Content-Type", "Authorization", "Mcp-Session-Id" ,"mcp-protocol-version"},
+			AllowHeaders:     []string{"Content-Type", "Authorization", "Mcp-Session-Id", "mcp-protocol-version"},
 			ExposeHeaders:    []string{"Mcp-Session-Id", "mcp-protocol-version"},
 			AllowCredentials: true,
 		},
@@ -328,6 +328,38 @@ func (c *Converter) ConvertFromJSON(jsonData []byte) (*config.MCPConfig, error) 
 // ConvertFromYAML converts YAML OpenAPI specification to MCP configuration
 func (c *Converter) ConvertFromYAML(yamlData []byte) (*config.MCPConfig, error) {
 	return c.Convert(yamlData)
+}
+
+// ConvertWithOptions converts OpenAPI specification to MCP configuration, using tenant and prefix if provided
+func (c *Converter) ConvertWithOptions(specData []byte, tenant, prefix string) (*config.MCPConfig, error) {
+	config, err := c.Convert(specData)
+	if err != nil {
+		return nil, err
+	}
+	// Remove leading / from tenant if present
+	cleanTenant := tenant
+	if strings.HasPrefix(cleanTenant, "/") {
+		cleanTenant = strings.TrimPrefix(cleanTenant, "/")
+	}
+	if tenant != "" && prefix != "" {
+		config.Tenant = cleanTenant
+		if len(config.Routers) > 0 {
+			config.Routers[0].Prefix = cleanTenant + "/" + prefix
+		}
+	} else if tenant != "" {
+		config.Tenant = cleanTenant
+		if len(config.Routers) > 0 {
+			// Autogenerate prefix as in default logic
+			rs := lol.RandomString(4)
+			config.Routers[0].Prefix = cleanTenant + "/" + rs
+		}
+	} else if prefix != "" {
+		config.Tenant = "default"
+		if len(config.Routers) > 0 {
+			config.Routers[0].Prefix = "/default/" + prefix
+		}
+	}
+	return config, nil
 }
 
 // contains checks if a string is in a slice

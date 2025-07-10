@@ -59,8 +59,8 @@ notifier:
 
   # API configuration (only used when type is api)
   api:
-    port: ${APISERVER_NOTIFIER_API_PORT:5235}
-    target_url: "${APISERVER_NOTIFIER_API_TARGET_URL:http://localhost:5235/_reload}"
+    port: ${APISERVER_NOTIFIER_API_PORT:5335}
+    target_url: "${APISERVER_NOTIFIER_API_TARGET_URL:http://localhost:5335/_reload}"
 
   # Redis configuration (only used when type is redis)
   redis:
@@ -68,11 +68,6 @@ notifier:
     password: "${APISERVER_NOTIFIER_REDIS_PASSWORD:UseStrongPasswordIsAGoodPractice}"
     db: ${APISERVER_NOTIFIER_REDIS_DB:0}
     topic: "${APISERVER_NOTIFIER_REDIS_TOPIC:mcp-gateway:reload}"
-
-openai:
-  api_key: "${OPENAI_API_KEY}"
-  model: "${OPENAI_MODEL:gpt-4.1}"
-  base_url: "${OPENAI_BASE_URL:https://api.openai.com/v1/}"
 
 # JWT configuration
 jwt:

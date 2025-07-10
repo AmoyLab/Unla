@@ -3,7 +3,7 @@ tenant: "default"
 
 routers:
   - server: "mock-server"
-    prefix: "/mcp/user"
+    prefix: "/gateway/user"
     cors:
       allowOrigins:
         - "*"

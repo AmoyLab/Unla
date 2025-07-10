@@ -212,16 +212,12 @@ config:
   SESSION_REDIS_TOPIC: "mcp-gateway:session"
   SESSION_REDIS_TTL: "24h"  # Session TTL in Redis
 
-  OPENAI_BASE_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1/"
-  OPENAI_API_KEY: "sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
-  OPENAI_MODEL: "qwen-turbo"
-
   MCP_GATEWAY_PID: "/data/mcp-gateway.pid"
   MCP_GATEWAY_PORT: "5245"
 
   VITE_API_BASE_URL: "/api"
   VITE_WS_BASE_URL: "/ws"
-  VITE_MCP_GATEWAY_BASE_URL: "/mcp"
+  VITE_MCP_GATEWAY_BASE_URL: "/gateway"
   VITE_BASE_URL: "/"
   APISERVER_JWT_SECRET_KEY: ""
   APISERVER_JWT_DURATION: "24h"

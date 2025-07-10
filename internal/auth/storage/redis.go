@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/errorx"
+	"github.com/amoylab/unla/pkg/utils"
 )
 
 // RedisStorage implements the Store interface using Redis
@@ -20,7 +20,7 @@ type RedisStorage struct {
 
 // NewRedisStorage creates a new Redis storage instance
 func NewRedisStorage(clusterType, addr, masterName string, username, password string, db int) (*RedisStorage, error) {
-	addrs := strings.Split(addr, ";")
+	addrs := utils.SplitByMultipleDelimiters(addr, ";", ",")
 	redisOptions := &redis.UniversalOptions{
 		Addrs:    addrs,
 		Username: username,

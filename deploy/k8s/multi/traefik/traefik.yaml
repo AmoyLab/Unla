@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`localhost`) && PathPrefix(`/mcp`)
+    - match: Host(`localhost`) && PathPrefix(`/gateway`)
       kind: Rule
       services:
         - name: mcp-gateway

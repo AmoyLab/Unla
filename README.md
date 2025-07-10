@@ -5,21 +5,11 @@
 [![English](https://img.shields.io/badge/English-Click-yellow)](./README.md)
 [![简体中文](https://img.shields.io/badge/简体中文-点击查看-orange)](docs/README.zh-CN.md)
 [![Release](https://img.shields.io/github/v/release/mcp-ecosystem/mcp-gateway)](https://github.com/amoylab/unla/releases)
-[![Docs](https://img.shields.io/badge/Docs-View%20Online-blue)](https://mcp.ifuryst.com)
+[![Docs](https://img.shields.io/badge/Docs-View%20Online-blue)](https://docs.unla.amoylab.com)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mcp-ecosystem/mcp-gateway)
 [![Discord](https://img.shields.io/badge/Discord-Join%20our%20Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/udf69cT9TY)
 [![Go Report Card](https://goreportcard.com/badge/github.com/amoylab/unla)](https://goreportcard.com/report/github.com/amoylab/unla)
 [![Snyk Security](https://img.shields.io/badge/Snyk-Secure-blueviolet?logo=snyk)](https://snyk.io/test/github/mcp-ecosystem/mcp-gateway)
-
----
-
-## 🎯 Support Us on Product Hunt
-
-We just launched **MCP Gateway** on Product Hunt! 🚀  
-If you find this project interesting or helpful, we'd love your support.  
-Every upvote helps more developers discover it! ❤️
-
-<a href="https://www.producthunt.com/posts/mcp-gateway?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-mcp&#0045;gateway" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=958310&theme=light&t=1745767484477" alt="MCP&#0032;Gateway - Turn&#0032;APIs&#0032;into&#0032;MCP&#0032;endpoints&#0044;without&#0032;changing&#0032;a&#0032;line&#0032;of&#0032;code | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
 ---
 
@@ -44,18 +34,16 @@ https://github.com/user-attachments/assets/69480eda-7aa7-4be7-9bc7-cae57fe16c54
 
 ## 🚀 Getting Started
 
-Unla supports a ready-to-run Docker deployment. Full deployment and configuration instructions are available in the [docs](https://mcp.ifuryst.com/getting-started/quick-start).
+Unla supports a ready-to-run Docker deployment. Full deployment and configuration instructions are available in the [docs](https://docs.unla.amoylab.com/getting-started/quick-start).
 
 ### Quick Launch with Docker
 
 Configure environment variables:
 
 ```bash
-export OPENAI_API_KEY="sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
-export OPENAI_MODEL="gpt-4o-mini"
-export APISERVER_JWT_SECRET_KEY="fec6d38f73d4211318e7c85617f0e333PlsChangeMe"
+export APISERVER_JWT_SECRET_KEY="changeme-please-generate-a-random-secret"
 export SUPER_ADMIN_USERNAME="admin"
-export SUPER_ADMIN_PASSWORD="297df52fbc321ebf7198d497fe1c9206PlsChangeMe"
+export SUPER_ADMIN_PASSWORD="changeme-please-use-a-secure-password"
 ```
 
 Launch the container:
@@ -70,8 +58,6 @@ docker run -d \
   -p 5236:5236 \
   -e ENV=production \
   -e TZ=Asia/Shanghai \
-  -e OPENAI_API_KEY=${OPENAI_API_KEY} \
-  -e OPENAI_MODEL=${OPENAI_MODEL} \
   -e APISERVER_JWT_SECRET_KEY=${APISERVER_JWT_SECRET_KEY} \
   -e SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME} \
   -e SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD} \
@@ -107,42 +93,42 @@ You can test the service using:
 1. The MCP Chat page in the web interface
 2. Your own MCP Client (**recommended**)
 
-📖 Read the full guide → [Quick Start »](https://mcp.ifuryst.com/getting-started/quick-start)
+📖 Read the full guide → [Quick Start »](https://docs.unla.amoylab.com/getting-started/quick-start)
 
 ---
 
 ## 🚀 Core Features
 
 ### 🔌 Protocol & Proxy Capabilities
-- [x] Support for converting RESTful APIs to MCP Server — Client → MCP Gateway → APIs  
-- [x] Support proxying MCP services — Client → MCP Gateway → MCP Servers  
-- [ ] Support for converting gRPC to MCP Server — Client → MCP Gateway → gRPC  
-- [ ] Support for converting WebSocket to MCP Server — Client → MCP Gateway → WebSocket  
-- [x] Support for MCP SSE  
-- [x] Support for MCP Streamable HTTP  
-- [x] Support for MCP responses including text, images, and audio  
+- [x] Support for converting RESTful APIs to MCP Server — Client → MCP Gateway → APIs
+- [x] Support proxying MCP services — Client → MCP Gateway → MCP Servers
+- [ ] Support for converting gRPC to MCP Server — Client → MCP Gateway → gRPC
+- [ ] Support for converting WebSocket to MCP Server — Client → MCP Gateway → WebSocket
+- [x] Support for MCP SSE
+- [x] Support for MCP Streamable HTTP
+- [x] Support for MCP responses including text, images, and audio
 
 ### 🧠 Session & Multi-Tenant Support
-- [x] Persistent and recoverable session support  
-- [x] Multi-tenant support  
-- [ ] Support for grouping and aggregating MCP servers  
+- [x] Persistent and recoverable session support
+- [x] Multi-tenant support
+- [ ] Support for grouping and aggregating MCP servers
 
 ### 🛠 Configuration & Management
-- [x] Automatic configuration fetching and seamless hot-reloading  
-- [x] Configuration persistence (Disk/SQLite/PostgreSQL/MySQL)  
-- [x] Configuration sync via OS Signals, HTTP, or Redis PubSub  
-- [x] Version control for configuration  
+- [x] Automatic configuration fetching and seamless hot-reloading
+- [x] Configuration persistence (Disk/SQLite/PostgreSQL/MySQL)
+- [x] Configuration sync via OS Signals, HTTP, or Redis PubSub
+- [x] Version control for configuration
 
 ### 🔐 Security & Authentication
-- [x] OAuth-based pre-authentication support for MCP Servers  
+- [x] OAuth-based pre-authentication support for MCP Servers
 
 ### 🖥 User Interface
-- [x] Intuitive and lightweight management UI  
+- [x] Intuitive and lightweight management UI
 
 ### 📦 Deployment & Operations
-- [x] Multi-replica service support  
-- [x] Docker support  
-- [x] Kubernetes and Helm deployment support  
+- [x] Multi-replica service support
+- [x] Docker support
+- [x] Kubernetes and Helm deployment support
 
 ---
 
@@ -150,7 +136,7 @@ You can test the service using:
 
 For more usage patterns, configuration examples, and integration guides, please visit:
 
-👉 **https://mcp.ifuryst.com**
+👉 **https://docs.unla.amoylab.com**
 
 ---
 

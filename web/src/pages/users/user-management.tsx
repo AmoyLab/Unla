@@ -310,8 +310,8 @@ export function UserManagement() {
                   });
                 }}
               >
-                <SelectItem key="admin">{t('users.role_admin')}</SelectItem>
-                <SelectItem key="normal">{t('users.role_normal')}</SelectItem>
+                <SelectItem key="admin" textValue={t('users.role_admin')}>{t('users.role_admin')}</SelectItem>
+                <SelectItem key="normal" textValue={t('users.role_normal')}>{t('users.role_normal')}</SelectItem>
               </Select>
 
               {/* Tenant selection section */}
@@ -381,8 +381,8 @@ export function UserManagement() {
                   });
                 }}
               >
-                <SelectItem key="admin">{t('users.role_admin')}</SelectItem>
-                <SelectItem key="normal">{t('users.role_normal')}</SelectItem>
+                <SelectItem key="admin" textValue={t('users.role_admin')}>{t('users.role_admin')}</SelectItem>
+                <SelectItem key="normal" textValue={t('users.role_normal')}>{t('users.role_normal')}</SelectItem>
               </Select>
 
               <div className="flex items-center gap-2">
