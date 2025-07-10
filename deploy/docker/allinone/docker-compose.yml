@@ -1,3 +1,4 @@
+version: "3"
 services:
   mcp-gateway:
     image: ${IMAGE:-ghcr.io/amoylab/unla/allinone:latest}
