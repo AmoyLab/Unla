@@ -486,16 +486,9 @@ export const getUserWithTenants = async (username: string) => {
 
 // Get current user's authorized tenants
 export const getUserAuthorizedTenants = async () => {
-  try {
-    const response = await api.get('/auth/user');
-    const data = response.data.data || response.data;
-    return data.tenants || [];
-  } catch (error) {
-    toast.error(t('errors.fetch_authorized_tenants'), {
-      duration: 3000,
-    });
-    throw error;
-  }
+  const response = await api.get('/auth/user');
+  const data = response.data.data || response.data;
+  return data.tenants || [];
 };
 
 // Update user tenant associations

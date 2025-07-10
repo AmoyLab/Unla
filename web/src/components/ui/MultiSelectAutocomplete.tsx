@@ -10,6 +10,7 @@ export interface MultiSelectAutocompleteProps {
   onSelectionChange?: (items: string[]) => void
   allowCustomValues?: boolean
   className?: string
+  maxVisibleItems?: number
 }
 
 interface AutocompleteItemData {
@@ -26,8 +27,10 @@ export function MultiSelectAutocomplete({
   selectedItems: externalSelectedItems,
   onSelectionChange,
   className,
+  maxVisibleItems,
 }: MultiSelectAutocompleteProps) {
-  const [items] = useState<string[]>(defaultItems)
+  // Use props directly instead of useState to always get latest data
+  const items = defaultItems
   const [selectedItems, setSelectedItems] = useState<string[]>(externalSelectedItems || [])
   const [inputValue, setInputValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -38,7 +41,7 @@ export function MultiSelectAutocomplete({
     const newSelectedItems = !selectedItems.includes(item)
       ? [...selectedItems, item]
       : selectedItems.filter((f) => f !== item)
-    
+
     setSelectedItems(newSelectedItems)
     onSelectionChange?.(newSelectedItems)
     setInputValue('')
@@ -70,6 +73,13 @@ export function MultiSelectAutocomplete({
     }
   }, [])
 
+  // Update internal state when external selectedItems change
+  useEffect(() => {
+    if (externalSelectedItems) {
+      setSelectedItems(externalSelectedItems)
+    }
+  }, [externalSelectedItems])
+
   useEffect(() => {
     selectedItemsRef.current = selectedItems
     changeFilledWithin(null)
@@ -99,13 +109,14 @@ export function MultiSelectAutocomplete({
         items={filteredItems}
         label={label}
         className={className}
+        menuTrigger="focus"
         classNames={{
           base: 'overflow-hidden',
           endContentWrapper: 'absolute top-[0.4px] right-3',
         }}
         startContent={
           <div className="flex flex-wrap gap-1">
-            {selectedItems.map((item) => (
+            {(maxVisibleItems ? selectedItems.slice(0, maxVisibleItems) : selectedItems).map((item) => (
               <Chip
                 key={item}
                 variant="flat"
@@ -120,6 +131,14 @@ export function MultiSelectAutocomplete({
                 {item}
               </Chip>
             ))}
+            {maxVisibleItems && selectedItems.length > maxVisibleItems && (
+              <Chip
+                variant="flat"
+                className="bg-default-200 dark:bg-default-100 rounded-lg"
+              >
+                +{selectedItems.length - maxVisibleItems} more
+              </Chip>
+            )}
           </div>
         }
         endContent={
@@ -146,14 +165,17 @@ export function MultiSelectAutocomplete({
         selectedKey={''}
         inputValue={inputValue}
         onInputChange={setInputValue}
+        listboxProps={{
+          emptyContent: items.length === 0 ? 'No options available' : 'No results found'
+        }}
         inputProps={{
           classNames: {
             label: 'mt-2.5 group-data-[filled-within=true]:translate-y-0 group-data-[filled-within=true]:mt-0',
             inputWrapper: `block ${selectedItems.length === 0 ? 'min-h-8' : 'h-auto'}`,
-            innerWrapper: `flex flex-wrap gap-1 h-auto max-w-[calc(100%-4rem)] ${
+            innerWrapper: `flex flex-wrap gap-1 h-auto ${
               selectedItems.length === 0 ? 'mt-3 -ml-1.5' : 'mt-6'
             }`,
-            input: 'w-20 h-7',
+            input: 'min-w-56 w-full h-7',
           },
         }}
       >
@@ -173,4 +195,4 @@ export function MultiSelectAutocomplete({
       </Autocomplete>
     </div>
   )
-} 
+}

@@ -1,6 +1,4 @@
 import {
-  Autocomplete,
-  AutocompleteItem,
   Button,
   Card,
   CardBody,
@@ -39,6 +37,7 @@ import OpenAPIImport from './components/OpenAPIImport';
 import {defaultConfig} from './constants/defaultConfig';
 
 import LocalIcon from '@/components/LocalIcon';
+import { MultiSelectAutocomplete } from '@/components/ui/MultiSelectAutocomplete';
 import {
   createMCPServer,
   deleteMCPServer,
@@ -101,7 +100,6 @@ export function GatewayManager() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [tenants, setTenants] = React.useState<Tenant[]>([]);
   const [selectedTenants, setSelectedTenants] = React.useState<Tenant[]>([]);
-  const [tenantInputValue, setTenantInputValue] = React.useState('');
   const [viewMode, setViewMode] = React.useState<string>('table');
   const [isDark, setIsDark] = React.useState(() => {
     return document.documentElement.classList.contains('dark');
@@ -172,8 +170,18 @@ export function GatewayManager() {
       try {
         const tenantsData = await getUserAuthorizedTenants();
         setTenants(tenantsData);
-      } catch {
-        toast.error(t('errors.fetch_authorized_tenants'));
+      } catch (error) {
+        // Check if it's an authentication error
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response: { status: number } };
+          if (axiosError.response.status === 401) {
+            toast.error(t('errors.authentication_required'));
+          } else {
+            toast.error(t('errors.fetch_authorized_tenants'));
+          }
+        } else {
+          toast.error(t('errors.fetch_authorized_tenants'));
+        }
       }
     };
 
@@ -435,35 +443,23 @@ export function GatewayManager() {
     })
   };
 
-  // Define custom filter function for tenants
-  const customTenantFilter = (inputValue: string, items: Tenant[]) => {
-    const lowerCaseInput = inputValue.toLowerCase();
-    return items.filter(item =>
-      item.name.toLowerCase().includes(lowerCaseInput) ||
-      item.prefix.toLowerCase().includes(lowerCaseInput)
-    );
+  // Prepare tenant data for MultiSelectAutocomplete
+  const tenantItems = React.useMemo(() => {
+    return tenants.map(tenant => `${tenant.name}(${tenant.prefix})`);
+  }, [tenants]);
+
+  const selectedTenantItems = React.useMemo(() => {
+    return selectedTenants.map(tenant => `${tenant.name}(${tenant.prefix})`);
+  }, [selectedTenants]);
+
+  const handleTenantSelectionChange = (selectedItems: string[]) => {
+    const newSelectedTenants = selectedItems.map(item => {
+      const tenant = tenants.find(t => `${t.name}(${t.prefix})` === item);
+      return tenant;
+    }).filter(Boolean) as Tenant[];
+    
+    setSelectedTenants(newSelectedTenants);
   };
-
-  const handleTenantSelect = (key: React.Key | null) => {
-    if (key === null) return;
-
-    const tenant = tenants.find(t => t.id === parseInt(key.toString(), 10));
-    if (tenant && !selectedTenants.some(t => t.id === tenant.id)) {
-      setSelectedTenants(prev => [...prev, tenant]);
-    }
-    setTenantInputValue('');
-  };
-
-  const handleRemoveTenant = (tenantId: number) => {
-    setSelectedTenants(prev => prev.filter(t => t.id !== tenantId));
-  };
-
-  // Filter out already selected tenants for selection
-  const availableTenants = React.useMemo(() => {
-    return tenants.filter(tenant =>
-      !selectedTenants.some(selected => selected.id === tenant.id)
-    );
-  }, [tenants, selectedTenants]);
 
   const handleCopyWithIcon = (text: string, key: string) => {
     handleCopyToClipboard(text);
@@ -512,52 +508,15 @@ export function GatewayManager() {
       </div>
 
       <div className="flex justify-between items-center mb-4">
-        <div className="max-w-md">
-          <label className="block text-sm font-medium mb-1">{t('gateway.select_tenant')}</label>
-
-          {/* Display selected tenants */}
-          <div className="flex flex-wrap gap-1 mb-2">
-            {selectedTenants.map(tenant => (
-              <Chip
-                key={tenant.id}
-                onClose={() => handleRemoveTenant(tenant.id)}
-                variant="flat"
-                aria-label={`${tenant.name} (${tenant.prefix})`}
-                isDisabled={isOpen || isCreateOpen || isImportOpen}
-              >
-                {`${tenant.name}(${tenant.prefix})`}
-              </Chip>
-            ))}
-          </div>
-
-          <Autocomplete
-            placeholder={t('gateway.search_tenant')}
-            defaultItems={availableTenants}
-            inputValue={tenantInputValue}
-            onInputChange={setTenantInputValue}
-            onSelectionChange={handleTenantSelect}
-            menuTrigger="focus"
-            isClearable
-            startContent={<LocalIcon icon="lucide:search" className="text-gray-400" />}
-            listboxProps={{
-              emptyContent: t('common.no_results')
-            }}
-            items={customTenantFilter(tenantInputValue, availableTenants)}
-            aria-label={t('gateway.search_tenant')}
-            isDisabled={isOpen || isCreateOpen || isImportOpen}
-          >
-            {(tenant) => (
-              <AutocompleteItem
-                key={tenant.id.toString()}
-                textValue={`${tenant.name}(${tenant.prefix})`}
-              >
-                <div className="flex flex-col">
-                  <span>{tenant.name}</span>
-                  <span className="text-xs text-gray-500">{tenant.prefix}</span>
-                </div>
-              </AutocompleteItem>
-            )}
-          </Autocomplete>
+        <div className="max-w-lg">
+          <MultiSelectAutocomplete
+            label={t('gateway.select_tenant')}
+            items={tenantItems}
+            selectedItems={selectedTenantItems}
+            onSelectionChange={handleTenantSelectionChange}
+            className="w-full"
+            maxVisibleItems={2}
+          />
         </div>
 
         <Tabs
