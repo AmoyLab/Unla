@@ -39,6 +39,7 @@ import OpenAPIImport from './components/OpenAPIImport';
 import {defaultConfig} from './constants/defaultConfig';
 
 import LocalIcon from '@/components/LocalIcon';
+import { MultiSelectAutocomplete } from '@/components/ui/MultiSelectAutocomplete';
 import {
   createMCPServer,
   deleteMCPServer,
@@ -100,7 +101,7 @@ export function GatewayManager() {
   const [newConfig, setNewConfig] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(true);
   const [tenants, setTenants] = React.useState<Tenant[]>([]);
-  const [selectedTenant, setSelectedTenant] = React.useState<string | undefined>(undefined);
+  const [selectedTenants, setSelectedTenants] = React.useState<Tenant[]>([]);
   const [viewMode, setViewMode] = React.useState<string>('table');
   const [isDark, setIsDark] = React.useState(() => {
     return document.documentElement.classList.contains('dark');
@@ -153,7 +154,7 @@ export function GatewayManager() {
         setIsLoading(true);
         // Use the selected tenant for filtering if available  
         const tenant = tenants.find(t => t.name === selectedTenant);
-        const tenantId = tenant?.id;
+        const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
         const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
       } catch {
@@ -293,7 +294,7 @@ export function GatewayManager() {
       if (currentMCPServer) {
         await updateMCPServer(cleanedConfig);
         const tenant = tenants.find(t => t.name === selectedTenant);
-        const tenantId = tenant?.id;
+        const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
         const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
         toast.success(t('gateway.edit_success'));
@@ -314,7 +315,7 @@ export function GatewayManager() {
 
     try {
       await deleteMCPServer(serverToDelete.tenant, serverToDelete.name);
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.delete_success'));
@@ -340,7 +341,7 @@ export function GatewayManager() {
     try {
       setIsLoading(true);
       await syncMCPServers();
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.sync_success'));
@@ -394,7 +395,7 @@ export function GatewayManager() {
 
       // If YAML is valid, proceed with creation
       await createMCPServer(cleanedConfig);
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onCreateOpenChange();
@@ -407,7 +408,7 @@ export function GatewayManager() {
 
   const handleImportSuccess = async () => {
     try {
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onImportOpenChange();
@@ -446,8 +447,22 @@ export function GatewayManager() {
     })
   };
 
-  const handleTenantSelectionChange = (tenantName: string) => {
-    setSelectedTenant(tenantName);
+  // Prepare tenant data for MultiSelectAutocomplete
+  const tenantItems = React.useMemo(() => {
+    return tenants.map(tenant => `${tenant.name}(${tenant.prefix})`);
+  }, [tenants]);
+
+  const selectedTenantItems = React.useMemo(() => {
+    return selectedTenants.map(tenant => `${tenant.name}(${tenant.prefix})`);
+  }, [selectedTenants]);
+
+  const handleTenantSelectionChange = (selectedItems: string[]) => {
+    const newSelectedTenants = selectedItems.map(item => {
+      const tenant = tenants.find(t => `${t.name}(${t.prefix})` === item);
+      return tenant;
+    }).filter(Boolean) as Tenant[];
+    
+    setSelectedTenants(newSelectedTenants);
   };
 
   const handleCopyWithIcon = (text: string, key: string) => {
@@ -498,27 +513,14 @@ export function GatewayManager() {
 
       <div className="flex justify-between items-center mb-4">
         <div className="max-w-lg">
-          <Select
+          <MultiSelectAutocomplete
             label={t('gateway.select_tenant')}
-            placeholder={t('gateway.select_tenant')}
-            selectedKeys={selectedTenant ? [selectedTenant] : []}
-            onSelectionChange={(keys) => {
-              const selectedKey = Array.from(keys)[0] as string;
-              if (selectedKey) {
-                handleTenantSelectionChange(selectedKey);
-              }
-            }}
-            className="w-full min-w-56"
-          >
-            {tenants.map((tenant) => (
-              <SelectItem 
-                key={tenant.name} 
-                textValue={`${tenant.name}(${tenant.prefix})`}
-              >
-                {tenant.name}({tenant.prefix})
-              </SelectItem>
-            ))}
-          </Select>
+            items={tenantItems}
+            selectedItems={selectedTenantItems}
+            onSelectionChange={handleTenantSelectionChange}
+            className="w-full"
+            maxVisibleItems={2}
+          />
         </div>
 
         <Tabs
@@ -770,15 +772,13 @@ export function GatewayManager() {
                                     <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                       <div className="flex items-center gap-2">
                                         <span className="text-sm font-medium">{mcpServer.name}</span>
-                                        <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
-                                          {mcpServer.type}
-                                        </Chip>
+                                        <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>{mcpServer.type}</Chip>
                                       </div>
                                       {mcpServer.type === 'stdio' && (
                                         <div className="text-xs">
                                           <div className="flex items-center gap-1">
                                             <span className="font-medium">Command:</span>
-                                            <code className="bg-default-100 px-1 rounded">{mcpServer.command} {mcpServer.args?.join(' ')}</code>
+                                            <code className="bg-default-100 px-1 py-1 rounded">{mcpServer.command} {mcpServer.args?.join(' ')}</code>
                                           </div>
                                           {mcpServer.env && Object.entries(mcpServer.env).map(([key, value]) => (
                                             <div key={key} className="text-xs truncate">
@@ -979,9 +979,7 @@ export function GatewayManager() {
                                   <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium">{mcpServer.name}</span>
-                                      <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
-                                        {mcpServer.type}
-                                      </Chip>
+                                      <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>{mcpServer.type}</Chip>
                                     </div>
                                     {mcpServer.type === 'stdio' && (
                                       <div className="text-xs">
@@ -1333,10 +1331,8 @@ export function GatewayManager() {
                         {currentModalServer.mcpServers.map((mcpServer, idx) => (
                           <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{mcpServer.name}</span>
-                              <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
-                                {mcpServer.type}
-                              </Chip>
+                              <span className="text-sm font-medium"></span>
+                              <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}></Chip>
                             </div>
                             {mcpServer.type === 'stdio' && (
                               <div className="text-xs">
@@ -1346,7 +1342,7 @@ export function GatewayManager() {
                                 </div>
                                 {mcpServer.env && Object.entries(mcpServer.env).map(([key, value]) => (
                                   <div key={key} className="text-xs truncate">
-                                    <span className="text-default-500">{key}:</span> {String(value)}
+                                    {String(value)}
                                   </div>
                                 ))}
                               </div>
