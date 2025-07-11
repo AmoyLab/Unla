@@ -154,7 +154,7 @@ export function GatewayManager() {
         setIsLoading(true);
         // Use the selected tenant for filtering if available  
         const tenant = tenants.find(t => t.name === selectedTenant);
-        const tenantId = tenant?.id;
+        const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
         const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
       } catch {
@@ -294,7 +294,7 @@ export function GatewayManager() {
       if (currentMCPServer) {
         await updateMCPServer(cleanedConfig);
         const tenant = tenants.find(t => t.name === selectedTenant);
-        const tenantId = tenant?.id;
+        const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
         const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
         toast.success(t('gateway.edit_success'));
@@ -315,7 +315,7 @@ export function GatewayManager() {
 
     try {
       await deleteMCPServer(serverToDelete.tenant, serverToDelete.name);
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.delete_success'));
@@ -341,7 +341,7 @@ export function GatewayManager() {
     try {
       setIsLoading(true);
       await syncMCPServers();
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.sync_success'));
@@ -395,7 +395,7 @@ export function GatewayManager() {
 
       // If YAML is valid, proceed with creation
       await createMCPServer(cleanedConfig);
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onCreateOpenChange();
@@ -408,7 +408,7 @@ export function GatewayManager() {
 
   const handleImportSuccess = async () => {
     try {
-      const tenantId = selectedTenant?.id;
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onImportOpenChange();
