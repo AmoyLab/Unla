@@ -163,7 +163,7 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     
     getEndpoint: (provider: LLMProvider) => {
       const baseURL = (provider.config.baseURL as string) || getDefaultBaseURL(provider.id);
-      return buildEndpointURL(baseURL, '/v1/chat/completions');
+      return buildEndpointURL(baseURL, '/chat/completions');
     },
     
     handleToolNames: (tools: ToolDefinition[]) => {
@@ -259,7 +259,7 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     
     getEndpoint: (provider: LLMProvider) => {
       const baseURL = (provider.config.baseURL as string) || getDefaultBaseURL(provider.id);
-      return buildEndpointURL(baseURL, '/v1/chat/completions');
+      return buildEndpointURL(baseURL, '/chat/completions');
     },
     
     handleToolNames: (tools: ToolDefinition[]) => {
@@ -290,7 +290,7 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     
     getEndpoint: (provider: LLMProvider) => {
       const baseURL = (provider.config.baseURL as string) || getDefaultBaseURL(provider.id);
-      return buildEndpointURL(baseURL, '/v1/chat/completions');
+      return buildEndpointURL(baseURL, '/chat/completions');
     },
     
     handleToolNames: (tools: ToolDefinition[]) => tools,

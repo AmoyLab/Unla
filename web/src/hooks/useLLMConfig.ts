@@ -237,8 +237,7 @@ export const useLLMConfig = () => {
       
       const endpoint = provider.id === 'anthropic' 
         ? buildEndpointURL(baseURL, '/v1/messages')
-        : buildEndpointURL(baseURL, '/v1/chat/completions');
-
+        : buildEndpointURL(baseURL, '/chat/completions');
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
