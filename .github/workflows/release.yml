@@ -22,6 +22,22 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install pnpm
+        run: npm install -g pnpm@9.15.0
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Get version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
@@ -107,7 +123,7 @@ jobs:
       - name: Install web dependencies
         run: |
           cd web
-          npm ci
+          pnpm install --frozen-lockfile
 
       - name: Build web
         run: |
@@ -116,7 +132,7 @@ jobs:
           VITE_WS_BASE_URL=ws://localhost:5234/ws \
           VITE_BASE_URL=/web \
           VITE_MCP_GATEWAY_BASE_URL=http://localhost:5235 \
-          npm run build
+          pnpm run build
           mv dist ../web-build
 
       # Create zip packages for each platform

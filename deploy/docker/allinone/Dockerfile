@@ -18,27 +18,30 @@ FROM node:20.18.0 AS web-builder
 WORKDIR /app/web
 
 COPY web/package*.json ./
+COPY web/pnpm-lock.yaml ./
 
-RUN npm install
+RUN npm install -g pnpm@9.15.0
+RUN pnpm install --frozen-lockfile
 
 COPY web/ .
 
-RUN npm run build
+RUN pnpm run build
 
 FROM ghcr.io/amoylab/unla/base:latest AS runtime
 
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG UV_DEFAULT_INDEX=https://pypi.org/simple
-ARG npm_config_registry=https://registry.npmjs.org/
+ARG pnpm_config_registry=https://registry.npmjs.org/
 
 ENV PIP_INDEX_URL=${PIP_INDEX_URL} \
     UV_DEFAULT_INDEX=${UV_DEFAULT_INDEX} \
-    npm_config_registry=${npm_config_registry}
+    pnpm_config_registry=${pnpm_config_registry}
 
-# Configure pip and npm to use the specified repositories
+# Configure pip and pnpm to use the specified repositories
 RUN mkdir -p /root/.config/pip && \
     echo "[global]\nindex-url = \${PIP_INDEX_URL}" > /root/.config/pip/pip.conf && \
-    npm config set registry ${npm_config_registry} -g
+    npm install -g pnpm@9.15.0 && \
+    pnpm config set registry ${pnpm_config_registry} -g
 
 COPY deploy/docker/allinone/supervisord.conf /etc/supervisor/conf.d/
 COPY deploy/docker/allinone/nginx.conf /etc/nginx/nginx.conf

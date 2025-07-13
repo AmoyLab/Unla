@@ -26,18 +26,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
-          cache: 'npm'
-          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9.15.0
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: |
           cd web
-          npm ci
+          pnpm install --frozen-lockfile
 
       - name: Run ESLint
         run: |
           cd web
-          npm run lint
+          pnpm run lint
           
       - name: Build web (dry run)
         run: |
@@ -46,7 +60,7 @@ jobs:
           VITE_WS_BASE_URL=/api/ws \
           VITE_BASE_URL=/ \
           VITE_MCP_GATEWAY_BASE_URL=/mcp \
-          npm run build
+          pnpm run build
 
   go-tests:
     name: Go Tests

@@ -56,6 +56,7 @@ export interface RuntimeConfig {
     enableExperimental: boolean;
     [key: string]: boolean;
   };
+  LLM_CONFIG_ADMIN_ONLY: boolean;
   [key: string]: unknown; // For any additional properties
 }
 
@@ -66,7 +67,8 @@ const defaultRuntimeConfig: RuntimeConfig = {
   version: '0.0.0',
   features: {
     enableExperimental: false
-  }
+  },
+  LLM_CONFIG_ADMIN_ONLY: false
 };
 
 declare global {
@@ -116,8 +118,8 @@ const fetchRuntimeConfig = async () => {
         ...defaultRuntimeConfig.features,
         ...(response.data.features || {})
       },
-      // Ensure LLM_CONFIG_ADMIN_ONLY is set to 'N' if not present
-      LLM_CONFIG_ADMIN_ONLY: typeof response.data.LLM_CONFIG_ADMIN_ONLY === 'undefined' ? 'N' : response.data.LLM_CONFIG_ADMIN_ONLY
+      // Ensure LLM_CONFIG_ADMIN_ONLY is set to false if not present
+      LLM_CONFIG_ADMIN_ONLY: typeof response.data.LLM_CONFIG_ADMIN_ONLY === 'undefined' ? false : response.data.LLM_CONFIG_ADMIN_ONLY
     };
   } catch (error) {
     // Always log errors, but with conditional detail level
@@ -127,7 +129,10 @@ const fetchRuntimeConfig = async () => {
     );
 
     // Use defaults on error
-    window.RUNTIME_CONFIG = { ...defaultRuntimeConfig };
+    window.RUNTIME_CONFIG = { 
+      ...defaultRuntimeConfig,
+      LLM_CONFIG_ADMIN_ONLY: false
+    };
   }
 
   // Render the main application using the existing root

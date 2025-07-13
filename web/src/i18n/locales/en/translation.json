@@ -78,14 +78,14 @@
     "dashboard": "Dashboard",
     "settings": "Settings",
     "profile": "Profile",
-    "gateway": "Gateway",
-    "chat": "Chat",
-    "users": "Users",
-    "tenants": "Tenants",
+    "gateway": "Gateway Config",
+    "chat": "Chat Console",
+    "users": "User Management",
+    "tenants": "Tenant Control",
     "tools_config": "Tools Configuration",
     "sse_url": "SSE URL",
     "streamable_http_url": "Streamable HTTP URL",
-    "config_versions": "Config Versions",
+    "config_versions": "Config History",
     "llm": "LLM Settings",
     "groups": {
       "chat_ai": "Chat & AI",
@@ -148,7 +148,7 @@
     "sync_failed": "Failed to synchronize configuration",
     "import_success": "OpenAPI specification imported successfully",
     "import_failed": "Failed to import OpenAPI specification",
-    "select_tenant": "Select Tenants (Multiple)",
+    "select_tenant": "Select Tenants",
     "search_tenant": "Search tenants...",
     "view_mode": "View Mode",
     "card_view": "Card View",
@@ -331,7 +331,16 @@
     "property_description": "Property Description",
     "header_name_placeholder": "Enter header name",
     "header_value_placeholder": "Enter header value",
+
     "allow_authorization_pass_through": "Allow Authorization Pass Through"
+
+    "select_file": "Select File",
+    "prefix_placeholder": "Enter prefix (optional)",
+    "upload_openapi_file": "Upload OpenAPI File",
+    "drag_drop_openapi": "Drag and drop your OpenAPI specification",
+    "or_click_to_browse": "or click to browse files",
+    "import_openapi_description": "Import OpenAPI specification to create MCP server configuration"
+
   },
   "chat": {
     "title": "Chat",
@@ -756,6 +765,8 @@
         "gpt-4.1-nano": "GPT-4.1 nano is the fastest, most cost-effective GPT-4.1 model.",
         "chatgpt-4o-latest": "ChatGPT-4o is a dynamic model that updates in real-time to maintain the current latest version. It combines powerful language understanding and generation capabilities, suitable for large-scale application scenarios including customer service, education, and technical support.",
         "o3-mini": "o3-mini provides high intelligence within the same cost and latency targets as o1-mini.",
+        "o3": "o3 is OpenAI's latest reasoning model with enhanced logical thinking capabilities, particularly excelling at complex problem-solving in mathematics, science, and programming.",
+        "o4-mini": "o4-mini is the newest compact model in the GPT-4 series, offering improved efficiency and performance for a wide range of tasks at a lower cost.",
         "o1-mini": "o1-mini is a fast, economical and efficient inference model designed for programming, mathematics and scientific application scenarios. This model has 128K context and knowledge cutoff date of October 2023.",
         "o1": "o1 is OpenAI's new inference model, supporting image and text input with text output, suitable for complex tasks requiring broad general knowledge. This model has 200K context and knowledge cutoff date of October 2023.",
         "o1-preview": "o1 is OpenAI's new inference model, suitable for complex tasks requiring broad general knowledge. This model features 128K context and a knowledge cutoff date of October 2023.",

@@ -1,13 +1,13 @@
 package handler
 
 import (
-        "github.com/amoylab/unla/internal/common/config"
-	"github.com/gin-gonic/gin"
 	"github.com/amoylab/unla/internal/apiserver/database"
+	"github.com/amoylab/unla/internal/auth/jwt"
 	"github.com/amoylab/unla/internal/i18n"
 	"github.com/amoylab/unla/internal/mcp/storage"
 	"github.com/amoylab/unla/internal/mcp/storage/notifier"
 	"github.com/amoylab/unla/pkg/openapi"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -66,19 +66,71 @@ func (h *OpenAPI) HandleImport(c *gin.Context) {
 		return
 	}
 
-	// Read tenant and prefix from form
-	tenant := c.PostForm("tenantId")
+	// Read tenant name and prefix from form
+	tenantName := c.PostForm("tenantName")
 	prefix := c.PostForm("prefix")
 
-	h.logger.Debug("creating OpenAPI converter")
+	// Get user from claims for tenant validation
+	claims, exists := c.Get("claims")
+	if !exists {
+		h.logger.Warn("missing JWT claims in context")
+		i18n.RespondWithError(c, i18n.ErrUnauthorized)
+		return
+	}
+	jwtClaims := claims.(*jwt.Claims)
+
+	// Get user information
+	user, err := h.db.GetUserByUsername(c.Request.Context(), jwtClaims.Username)
+	if err != nil {
+		h.logger.Error("failed to get user info",
+			zap.String("username", jwtClaims.Username),
+			zap.Error(err))
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to get user info: "+err.Error()))
+		return
+	}
+
+	h.logger.Debug("received OpenAPI import request",
+		zap.String("tenantName", tenantName),
+		zap.String("prefix", prefix),
+		zap.String("username", jwtClaims.Username),
+		zap.String("user_role", string(user.Role)))
+
+	// Validate tenant is required
+	if tenantName == "" {
+		h.logger.Warn("tenant is required for OpenAPI import",
+			zap.String("username", jwtClaims.Username))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Tenant is required"))
+		return
+	}
+
+	// Find the tenant by name to get its prefix
+	tenantObj, err := h.db.GetTenantByName(c.Request.Context(), tenantName)
+	if err != nil {
+		h.logger.Error("failed to find tenant",
+			zap.String("tenantName", tenantName),
+			zap.Error(err))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Tenant not found: "+tenantName))
+		return
+	}
+
+	// Use the tenant name for config.Tenant and tenant prefix for router prefix
+	finalTenant := tenantName
+	tenantPrefix := tenantObj.Prefix
+	h.logger.Debug("using specified tenant",
+		zap.String("tenantName", tenantName),
+		zap.String("tenantPrefix", tenantPrefix),
+		zap.String("finalTenant", finalTenant))
+
+	h.logger.Debug("creating OpenAPI converter",
+		zap.String("final_tenant", finalTenant),
+		zap.String("prefix", prefix))
 	converter := openapi.NewConverter()
 
-	// Use provided tenant/prefix if not empty, else use default logic
-	var config *config.MCPConfig
-	if tenant == "" && prefix == "" {
-		config, err = converter.Convert(content)
-	} else {
-		config, err = converter.ConvertWithOptions(content, tenant, prefix)
+	// Use the validated tenant
+	config, err := converter.ConvertWithOptions(content, tenantPrefix, prefix)
+	if err == nil {
+		// Override the tenant field to use tenant name instead of prefix
+		config.Tenant = finalTenant
 	}
 	if err != nil {
 		h.logger.Error("failed to convert OpenAPI specification", zap.Error(err))

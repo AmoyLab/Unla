@@ -110,7 +110,7 @@ export function ConfigVersionsPage() {
       .sort((a, b) => b.version - a.version);
 
     const currentIndex = sameConfigVersions.findIndex(v => v.version === record.version);
-    
+
     if (currentIndex < sameConfigVersions.length - 1) {
       setSelectedVersions({
         old: sameConfigVersions[currentIndex + 1],
@@ -442,4 +442,4 @@ export function ConfigVersionsPage() {
       </Modal>
     </div>
   );
-} 
+}

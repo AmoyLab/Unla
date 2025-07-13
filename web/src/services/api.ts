@@ -11,7 +11,7 @@ import {toast} from '../utils/toast';
 
 // Create an axios instance with default config
 const api = axios.create({
-  baseURL: window.RUNTIME_CONFIG?.apiBaseUrl || '/api',	
+  baseURL: window.RUNTIME_CONFIG?.apiBaseUrl || '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -168,12 +168,11 @@ export const deleteChatSession = async (sessionId: string) => {
   }
 };
 
-export const importOpenAPI = async (file: File, tenantId?: string, prefix?: string) => {
+export const importOpenAPI = async (file: File, tenantName?: string, prefix?: string) => {
   try {
     const formData = new globalThis.FormData();
     formData.append('file', file);
-    // Always send tenantId and prefix, even if empty
-    formData.append('tenantId', tenantId ?? '');
+    formData.append('tenantName', tenantName ?? '');
     formData.append('prefix', prefix ?? '');
 
     const response = await api.post('/openapi/import', formData, {

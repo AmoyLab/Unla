@@ -53,7 +53,7 @@ class MCPService {
     try {
       // Create transport and client
       const gatewayBaseUrl = window.RUNTIME_CONFIG?.VITE_MCP_GATEWAY_BASE_URL || '';
-      const serverUrl = new URL(`${gatewayBaseUrl}${prefix}/gateway`, window.location.origin);
+      const serverUrl = new URL(`${gatewayBaseUrl}${prefix}/mcp`, window.location.origin);
 
       // Build headers for auth
       let headers: Record<string, string> = {};

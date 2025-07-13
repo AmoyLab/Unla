@@ -152,7 +152,7 @@ export function GatewayManager() {
     const fetchMCPServers = async () => {
       try {
         setIsLoading(true);
-        // Use the selected tenant for filtering if available  
+        // Use the selected tenant for filtering if available
         const tenant = tenants.find(t => t.name === selectedTenant);
         const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
         const servers = await getMCPServers(tenantId);
@@ -315,7 +315,12 @@ export function GatewayManager() {
 
     try {
       await deleteMCPServer(serverToDelete.tenant, serverToDelete.name);
-      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+
+
+
+      const tenant = tenants.find(t => t.name === selectedTenant);
+      const tenantId = tenant?.id;
+
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.delete_success'));
@@ -341,7 +346,12 @@ export function GatewayManager() {
     try {
       setIsLoading(true);
       await syncMCPServers();
-      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+
+
+
+      const tenant = tenants.find(t => t.name === selectedTenant);
+      const tenantId = tenant?.id;
+
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.sync_success'));
@@ -395,7 +405,13 @@ export function GatewayManager() {
 
       // If YAML is valid, proceed with creation
       await createMCPServer(cleanedConfig);
-      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+
+
+
+
+      const tenant = tenants.find(t => t.name === selectedTenant);
+      const tenantId = tenant?.id;
+
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onCreateOpenChange();
@@ -408,7 +424,12 @@ export function GatewayManager() {
 
   const handleImportSuccess = async () => {
     try {
-      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+
+
+
+      const tenant = tenants.find(t => t.name === selectedTenant);
+      const tenantId = tenant?.id;
+
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onImportOpenChange();
@@ -515,12 +536,28 @@ export function GatewayManager() {
         <div className="max-w-lg">
           <MultiSelectAutocomplete
             label={t('gateway.select_tenant')}
-            items={tenantItems}
-            selectedItems={selectedTenantItems}
-            onSelectionChange={handleTenantSelectionChange}
-            className="w-full"
-            maxVisibleItems={2}
-          />
+
+
+
+            selectedKeys={selectedTenant ? [selectedTenant] : []}
+            onSelectionChange={(keys) => {
+              const selectedKey = Array.from(keys)[0] as string;
+              if (selectedKey) {
+                handleTenantSelectionChange(selectedKey);
+              }
+            }}
+            className="w-full min-w-56"
+          >
+            {tenants.map((tenant) => (
+              <SelectItem
+                key={tenant.name}
+                textValue={`${tenant.name}(${tenant.prefix})`}
+              >
+                {tenant.name}({tenant.prefix})
+              </SelectItem>
+            ))}
+          </Select>
+
         </div>
 
         <Tabs
@@ -562,7 +599,7 @@ export function GatewayManager() {
         ) : viewMode === 'card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {(mcpservers || []).map((server) => (
-              <Card key={server.name} className="w-full hover:shadow-lg transition-shadow bg-card">
+              <Card key={`${server.tenant}-${server.name}`} className="w-full hover:shadow-lg transition-shadow bg-card">
                 <CardBody className="flex flex-col gap-3 p-4">
                   <div className="flex justify-between items-center">
                     <div className="flex flex-col gap-1">
@@ -638,7 +675,7 @@ export function GatewayManager() {
                       {(server.servers || []).map((serverConfig) => {
                         const sc = serverConfig as ServerConfig;
                         return (
-                          <div key={sc.name} className="space-y-3">
+                          <div key={`${server.tenant}-${server.name}-config-${sc.name}`} className="space-y-3">
                             <div>
                               <h4 className="text-sm font-semibold truncate">{sc.name}</h4>
                               <p className="text-sm text-default-500 line-clamp-2">{sc.description}</p>
@@ -648,7 +685,7 @@ export function GatewayManager() {
                               <h4 className="text-sm font-semibold">{t('gateway.routing_config')}</h4>
                               <div className="flex flex-col gap-2">
                                 {(server.routers || []).map((router: RouterConfig, idx: number) => (
-                                  <div key={idx} className="flex items-center gap-2">
+                                  <div key={`${server.tenant}-${server.name}-router-${router.prefix}-${idx}`} className="flex items-center gap-2">
                                     <Popover placement="right">
                                       <PopoverTrigger>
                                         <Chip
@@ -769,7 +806,7 @@ export function GatewayManager() {
                                 <h4 className="text-sm font-semibold">{t('gateway.backend_config')}</h4>
                                 <div className="flex flex-col gap-2">
                                   {server.mcpServers.map((mcpServer, idx) => (
-                                    <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
+                                    <div key={`${server.tenant}-${server.name}-backend-${mcpServer.name}-${idx}`} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                       <div className="flex items-center gap-2">
                                         <span className="text-sm font-medium">{mcpServer.name}</span>
                                         <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>{mcpServer.type}</Chip>
@@ -854,7 +891,7 @@ export function GatewayManager() {
                               <h4 className="text-sm font-semibold">{t('gateway.routing_config')}</h4>
                               <div className="flex flex-col gap-2">
                                 {server.routers.map((router: RouterConfig, idx: number) => (
-                                  <div key={idx} className="flex items-center gap-2">
+                                  <div key={`${server.tenant}-${server.name}-router-list-${router.prefix}-${idx}`} className="flex items-center gap-2">
                                     <Popover placement="right">
                                       <PopoverTrigger>
                                         <Chip
@@ -976,7 +1013,7 @@ export function GatewayManager() {
                               <h4 className="text-sm font-semibold">{t('gateway.mcp_config')}</h4>
                               <div className="flex flex-col gap-2">
                                 {server.mcpServers.map((mcpServer, idx) => (
-                                  <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
+                                  <div key={`${server.tenant}-${server.name}-mcp-${mcpServer.name}-${idx}`} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium">{mcpServer.name}</span>
                                       <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>{mcpServer.type}</Chip>
@@ -1026,7 +1063,7 @@ export function GatewayManager() {
             </TableHeader>
             <TableBody>
               {(mcpservers || []).map((server) => (
-                <TableRow key={server.name}>
+                <TableRow key={`${server.tenant}-${server.name}`}>
                   <TableCell className="font-medium truncate max-w-[15%]">{server.name}</TableCell>
                   <TableCell className="max-w-[25%]">
                     {server.servers && server.servers.length > 0 ? (
@@ -1176,11 +1213,19 @@ export function GatewayManager() {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isImportOpen} onOpenChange={onImportOpenChange} size="2xl">
+      <Modal isOpen={isImportOpen} onOpenChange={onImportOpenChange} size="3xl" scrollBehavior="inside">
         <ModalContent>
-          <ModalHeader>{t('gateway.import_openapi')}</ModalHeader>
-          <ModalBody>
-            <OpenAPIImport onSuccess={handleImportSuccess} />
+          <ModalHeader className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <LocalIcon icon="lucide:file-plus" className="text-primary" />
+              {t('gateway.import_openapi')}
+            </div>
+            <p className="text-sm text-default-500 font-normal">
+              {t('gateway.import_openapi_description', 'Import OpenAPI specification to create MCP server configuration')}
+            </p>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            <OpenAPIImport onSuccess={handleImportSuccess} selectedTenant={selectedTenant} />
           </ModalBody>
           <ModalFooter>
             <Button color="danger" variant="light" onPress={() => onImportOpenChange()}>
@@ -1208,7 +1253,7 @@ export function GatewayManager() {
                     <h4 className="text-sm font-semibold">{t('gateway.routing_config')}</h4>
                     <div className="space-y-2 w-full">
                       {(currentModalServer?.routers || []).map((router: RouterConfig, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2 flex-wrap">
+                        <div key={`${currentModalServer?.tenant}-${currentModalServer?.name}-modal-router-${router.prefix}-${idx}`} className="flex items-center gap-2 flex-wrap">
                           <Popover placement="right">
                             <PopoverTrigger>
                               <Chip
@@ -1329,7 +1374,7 @@ export function GatewayManager() {
                       <h4 className="text-sm font-semibold">{t('gateway.backend_config')}</h4>
                       <div className="space-y-2">
                         {currentModalServer.mcpServers.map((mcpServer, idx) => (
-                          <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
+                          <div key={`${currentModalServer.tenant}-${currentModalServer.name}-modal-${mcpServer.name}-${idx}`} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium"></span>
                               <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}></Chip>

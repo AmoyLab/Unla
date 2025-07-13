@@ -19,12 +19,14 @@ FROM node:20.18.0 AS web-builder
 WORKDIR /app/web
 
 COPY web/package*.json ./
+COPY web/pnpm-lock.yaml ./
 
-RUN npm install
+RUN npm install -g pnpm@9.15.0
+RUN pnpm install --frozen-lockfile
 
 COPY web/ .
 
-RUN npm run build
+RUN pnpm run build
 
 FROM nginx:1.27.5-bookworm
 

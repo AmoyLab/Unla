@@ -2,55 +2,41 @@ package handler
 
 import (
 	"net/http"
-	"os"
-	"strconv"
 
+	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/pkg/version"
 	"github.com/gin-gonic/gin"
 )
 
+// RuntimeConfigHandler represents the runtime configuration handler
+type RuntimeConfigHandler struct {
+	cfg *config.APIServerConfig
+}
+
+// NewRuntimeConfigHandler creates a new runtime configuration handler
+func NewRuntimeConfigHandler(cfg *config.APIServerConfig) *RuntimeConfigHandler {
+	return &RuntimeConfigHandler{
+		cfg: cfg,
+	}
+}
+
 // HandleRuntimeConfig serves frontend runtime config as JSON
-func HandleRuntimeConfig(c *gin.Context) {
-	// Get debug mode from environment or default to false
-	debugMode := false
-	if debugModeStr := os.Getenv("DEBUG_MODE"); debugModeStr != "" {
-		if parsed, err := strconv.ParseBool(debugModeStr); err == nil {
-			debugMode = parsed
-		}
-	}
-
-	versionStr := version.Version
-
-	// Check if experimental features are enabled
-	enableExperimental := false
-	if expStr := os.Getenv("ENABLE_EXPERIMENTAL"); expStr != "" {
-		if parsed, err := strconv.ParseBool(expStr); err == nil {
-			enableExperimental = parsed
-		}
-	}
-
+func (h *RuntimeConfigHandler) HandleRuntimeConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		// Keep original environment variables for backward compatibility
-		"VITE_API_BASE_URL":         getEnvOrDefault("VITE_API_BASE_URL", "/api"),
-		"VITE_WS_BASE_URL":          getEnvOrDefault("VITE_WS_BASE_URL", "/api/ws"),
-		"VITE_MCP_GATEWAY_BASE_URL": getEnvOrDefault("VITE_MCP_GATEWAY_BASE_URL", "/gateway"),
-		"VITE_BASE_URL":             getEnvOrDefault("VITE_BASE_URL", "/"),
+		"VITE_API_BASE_URL":         h.cfg.Web.APIBaseURL,
+		"VITE_WS_BASE_URL":          h.cfg.Web.WSBaseURL,
+		"VITE_MCP_GATEWAY_BASE_URL": h.cfg.Web.MCPGatewayBaseURL,
+		"VITE_BASE_URL":             h.cfg.Web.BaseURL,
 
 		// Add new properties matching our TypeScript interface
-		"apiBaseUrl": getEnvOrDefault("VITE_API_BASE_URL", "/api"),
-		"debugMode":  debugMode,
-		"version":    versionStr,
+		"apiBaseUrl": h.cfg.Web.APIBaseURL,
+		"debugMode":  h.cfg.Web.DebugMode,
+		"version":    version.Version,
 		"features": gin.H{
-			"enableExperimental": enableExperimental,
+			"enableExperimental": h.cfg.Web.EnableExperimental,
 		},
-		"LLM_CONFIG_ADMIN_ONLY": getEnvOrDefault("LLM_CONFIG_ADMIN_ONLY", "N"),
+		"LLM_CONFIG_ADMIN_ONLY": h.cfg.Web.LLMConfigAdminOnly,
 	})
 }
 
-// getEnvOrDefault returns the value of the environment variable or a default if not set
-func getEnvOrDefault(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultVal
-}

@@ -587,8 +587,8 @@ export function LLMChatInterface() {
 
   const llmConfigAdminOnly = window.RUNTIME_CONFIG?.LLM_CONFIG_ADMIN_ONLY;
   const canShowLLM =
-    llmConfigAdminOnly === 'N' ||
-    (llmConfigAdminOnly === 'Y' && userInfo?.role === 'admin');
+    llmConfigAdminOnly === false ||
+    (llmConfigAdminOnly === true && userInfo?.role === 'admin');
 
   // Load system prompt on mount (user-level, not session-level)
   useEffect(() => {

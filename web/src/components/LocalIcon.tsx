@@ -11,17 +11,17 @@ interface LocalIconProps {
   onClick?: () => void;
 }
 
-const LocalIcon: React.FC<LocalIconProps> = ({ 
-  icon, 
-  className = '', 
-  style = {}, 
-  width = 24, 
+const LocalIcon: React.FC<LocalIconProps> = ({
+  icon,
+  className = '',
+  style = {},
+  width = 24,
   height = 24,
-  onClick 
+  onClick
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const iconPath = iconMap[icon as keyof typeof iconMap];
-  
+
   useEffect(() => {
     if (!iconPath) {
       console.warn(`Icon not found: ${icon}`);

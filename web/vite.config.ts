@@ -14,6 +14,31 @@ export default defineConfig(({ mode }) => {
   return {
     base: env.VITE_BASE_URL || '/',
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            // Separate vendor chunks to avoid the rollup bug
+            if (id.includes('node_modules')) {
+              if (id.includes('katex')) return 'katex';
+              if (id.includes('highlight.js')) return 'highlight';
+              if (id.includes('monaco-editor')) return 'monaco';
+              if (id.includes('react')) return 'react';
+              return 'vendor';
+            }
+          }
+        },
+        onwarn(warning, warn) {
+          // Suppress certain warnings that might trigger the bug
+          if (warning.code === 'EVAL') return;
+          if (warning.code === 'CIRCULAR_DEPENDENCY') return;
+          warn(warning);
+        }
+      },
+      target: 'esnext',
+      minify: 'esbuild',
+      sourcemap: false,
+    },
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
       MONACO_ENV: {

@@ -225,7 +225,8 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 	}
 
 	// Public runtime config endpoint for frontend
-	r.GET("/api/runtime-config", apiserverHandler.HandleRuntimeConfig)
+	runtimeConfigHandler := apiserverHandler.NewRuntimeConfigHandler(cfg)
+	r.GET("/api/runtime-config", runtimeConfigHandler.HandleRuntimeConfig)
 
 	r.Static("/web", "./web")
 	return r

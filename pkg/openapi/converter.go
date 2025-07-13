@@ -337,26 +337,20 @@ func (c *Converter) ConvertWithOptions(specData []byte, tenant, prefix string) (
 		return nil, err
 	}
 	// Remove leading / from tenant if present
-	cleanTenant := tenant
-	if strings.HasPrefix(cleanTenant, "/") {
-		cleanTenant = strings.TrimPrefix(cleanTenant, "/")
-	}
+	cleanTenant := strings.TrimPrefix(tenant, "/")
+	cleanPrefix := strings.TrimPrefix(prefix, "/")
 	if tenant != "" && prefix != "" {
 		config.Tenant = cleanTenant
 		if len(config.Routers) > 0 {
-			config.Routers[0].Prefix = cleanTenant + "/" + prefix
+			rs := lol.RandomString(4)
+			config.Routers[0].Prefix = "/" + cleanTenant + "/" + cleanPrefix + "/" + rs
 		}
 	} else if tenant != "" {
 		config.Tenant = cleanTenant
 		if len(config.Routers) > 0 {
 			// Autogenerate prefix as in default logic
 			rs := lol.RandomString(4)
-			config.Routers[0].Prefix = cleanTenant + "/" + rs
-		}
-	} else if prefix != "" {
-		config.Tenant = "default"
-		if len(config.Routers) > 0 {
-			config.Routers[0].Prefix = "/default/" + prefix
+			config.Routers[0].Prefix = "/" + cleanTenant + "/" + rs
 		}
 	}
 	return config, nil

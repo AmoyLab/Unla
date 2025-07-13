@@ -45,10 +45,10 @@ go run cmd/mcp-gateway/main.go test -c configs/mcp-gateway.yaml
 
 ```bash
 cd web/
-npm run dev          # development server
-npm run build        # production build
-npm run lint         # lint TypeScript/React code
-npm run preview      # preview production build
+pnpm run dev          # development server
+pnpm run build        # production build
+pnpm run lint         # lint TypeScript/React code
+pnpm run preview      # preview production build
 ```
 
 ## Key Architecture Components

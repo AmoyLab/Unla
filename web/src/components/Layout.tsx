@@ -11,18 +11,16 @@ import {
   NavbarItem,
   Tooltip
 } from "@heroui/react";
-
-import LocalIcon from '@/components/LocalIcon';
-
 import React, {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Link, useLocation, useNavigate} from 'react-router-dom';
 
-import {getCurrentUser} from '@/services/api';
-import {toast} from '@/utils/toast';
 import {ChangePasswordDialog} from '@/components/ChangePasswordDialog';
 import {LanguageSwitcher} from '@/components/LanguageSwitcher';
+import LocalIcon from '@/components/LocalIcon';
 import {WechatQRCode} from '@/components/WechatQRCode';
+import {getCurrentUser} from '@/services/api';
+import {toast} from '@/utils/toast';
 
 import logoImg from '/logo.png';
 
@@ -69,8 +67,8 @@ export function Layout({ children }: LayoutProps) {
 
   const llmConfigAdminOnly = window.RUNTIME_CONFIG?.LLM_CONFIG_ADMIN_ONLY;
   const canShowLLM =
-    llmConfigAdminOnly === 'N' ||
-    (llmConfigAdminOnly === 'Y' && userInfo?.role === 'admin');
+    llmConfigAdminOnly === false ||
+    (llmConfigAdminOnly === true && userInfo?.role === 'admin');
 
   const menuGroups = [
     {
@@ -281,7 +279,7 @@ export function Layout({ children }: LayoutProps) {
                             : 'hover:bg-accent text-foreground'
                         }`}
                       >
-                        <LocalIcon icon={item.icon} className="text-xl" />
+                        <LocalIcon icon={item.icon} width={24} height={24} />
                       </Link>
                     </Tooltip>
                   ) : (
@@ -296,7 +294,7 @@ export function Layout({ children }: LayoutProps) {
                           : 'hover:bg-accent text-foreground'
                       }`}
                     >
-                      <LocalIcon icon={item.icon} className="text-xl mr-3" />
+                      <LocalIcon icon={item.icon} width={20} height={20} className="mr-3" />
                       <span>{item.label}</span>
                     </Link>
                   )

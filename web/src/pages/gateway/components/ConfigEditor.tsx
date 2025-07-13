@@ -131,7 +131,27 @@ export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditin
 
             <Select
               label={t('gateway.tenant')}
-              selectedKeys={generalFormState.tenant !== undefined ? [generalFormState.tenant] : (parsedConfig?.tenant ? [parsedConfig.tenant.replace(/^\//, '')] : ['default'])}
+              selectedKeys={(() => {
+                if (generalFormState.tenant !== undefined) {
+                  return [generalFormState.tenant];
+                }
+                
+                const configTenant = parsedConfig?.tenant?.replace(/^\//, '');
+                const activeTenants = tenants.filter(tenant => tenant.isActive);
+                
+                // If we have active tenants, check if the config tenant exists in them
+                if (activeTenants.length > 0) {
+                  const tenantExists = activeTenants.some(tenant => tenant.name === configTenant);
+                  if (tenantExists && configTenant) {
+                    return [configTenant];
+                  }
+                  // If config tenant doesn't exist or is empty, default to first active tenant
+                  return [activeTenants[0].name];
+                }
+                
+                // If no active tenants, fall back to 'default'
+                return ['default'];
+              })()}
               onChange={(e) => {
                 const newTenant = e.target.value;
                 setGeneralFormState(prev => ({

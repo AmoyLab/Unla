@@ -16,6 +16,7 @@ type (
 		JWT        JWTConfig        `yaml:"jwt"`
 		SuperAdmin SuperAdminConfig `yaml:"super_admin"`
 		I18n       I18nConfig       `yaml:"i18n"`
+		Web        WebConfig        `yaml:"web"`
 	}
 
 	// I18nConfig represents the internationalization configuration
@@ -36,6 +37,16 @@ type (
 	JWTConfig struct {
 		SecretKey string        `yaml:"secret_key"`
 		Duration  time.Duration `yaml:"duration"`
+	}
+
+	WebConfig struct {
+		APIBaseURL         string `yaml:"api_base_url"`
+		WSBaseURL          string `yaml:"ws_base_url"`
+		MCPGatewayBaseURL  string `yaml:"mcp_gateway_base_url"`
+		BaseURL            string `yaml:"base_url"`
+		DebugMode          bool   `yaml:"debug_mode"`
+		EnableExperimental bool   `yaml:"enable_experimental"`
+		LLMConfigAdminOnly bool   `yaml:"llm_config_admin_only"`
 	}
 )
 

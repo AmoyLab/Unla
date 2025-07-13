@@ -62,7 +62,7 @@ jobs:
           build-args: |
             PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
             UV_DEFAULT_INDEX=https://mirrors.aliyun.com/pypi/simple/
-            npm_config_registry=https://registry.npmmirror.com
+            pnpm_config_registry=https://registry.npmmirror.com
           tags: |
             ${{ env.DOCKER_HUB_USERNAME }}/unla-base:latest
             ghcr.io/${{ env.LOWERCASE_OWNER }}/${{ env.LOWERCASE_REPO }}/base:latest

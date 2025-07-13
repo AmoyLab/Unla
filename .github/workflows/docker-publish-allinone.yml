@@ -74,7 +74,7 @@ jobs:
           build-args: |
             PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
             UV_DEFAULT_INDEX=https://mirrors.aliyun.com/pypi/simple/
-            npm_config_registry=https://registry.npmmirror.com
+            pnpm_config_registry=https://registry.npmmirror.com
           tags: |
             ${{ env.PUSH_LATEST == 'true' && format('{0}/unla-allinone:latest', env.DOCKER_HUB_USERNAME) || '' }}
             ${{ format('{0}/unla-allinone:{1}', env.DOCKER_HUB_USERNAME, github.ref_name) }}

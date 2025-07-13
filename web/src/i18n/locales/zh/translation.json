@@ -78,15 +78,15 @@
     "dashboard": "仪表盘",
     "settings": "设置",
     "profile": "个人资料",
-    "gateway": "网关",
-    "chat": "聊天",
-    "users": "用户",
-    "tenants": "租户",
+    "gateway": "网关配置",
+    "chat": "聊天对话",
+    "users": "用户管理",
+    "tenants": "租户管理",
     "tools_config": "工具配置",
     "sse_url": "SSE URL",
     "streamable_http_url": "Streamable HTTP URL",
-    "config_versions": "配置版本历史",
-    "llm": "LLM 设置",
+    "config_versions": "配置历史",
+    "llm": "模型配置",
     "groups": {
       "chat_ai": "聊天与AI",
       "gateway_config": "网关与配置",
@@ -148,7 +148,7 @@
     "sync_failed": "配置同步失败",
     "import_success": "OpenAPI 规范导入成功",
     "import_failed": "OpenAPI 规范导入失败",
-    "select_tenant": "选择租户(多选)",
+    "select_tenant": "选择租户",
     "search_tenant": "搜索租户...",
     "view_mode": "视图模式",
     "card_view": "卡片视图",
@@ -331,7 +331,16 @@
     "property_description": "属性描述",
     "header_name_placeholder": "请输入头部名称",
     "header_value_placeholder": "请输入头部值",
+
     "allow_authorization_pass_through": "允许透传 Authorization 头部"
+
+    "select_file": "选择文件",
+    "prefix_placeholder": "输入前缀（可选）",
+    "upload_openapi_file": "上传 OpenAPI 文件",
+    "drag_drop_openapi": "拖放您的 OpenAPI 规范文件",
+    "or_click_to_browse": "或点击浏览文件",
+    "import_openapi_description": "导入 OpenAPI 规范以创建 MCP 服务器配置"
+
   },
   "chat": {
     "title": "聊天",
@@ -756,6 +765,8 @@
         "gpt-4.1-nano": "GPT-4.1 nano 是速度最快、最具成本效益的 GPT-4.1 模型。",
         "chatgpt-4o-latest": "ChatGPT-4o 是一款动态模型，实时更新以保持当前最新版本。它结合了强大的语言理解与生成能力，适合于大规模应用场景，包括客户服务、教育和技术支持。",
         "o3-mini": "o3-mini 在与 o1-mini 相同的成本和延迟目标下提供高智能。",
+        "o3": "o3 是 OpenAI 最新的推理模型，具有增强的逻辑思考能力，特别擅长数学、科学和编程等复杂问题求解。",
+        "o4-mini": "o4-mini 是 GPT-4 系列中最新的紧凑型模型，以更低的成本为广泛的任务提供改进的效率和性能。",
         "o1-mini": "o1-mini 是一个快速、经济高效的推理模型，专为编程、数学和科学应用场景而设计。该模型具有 128K 上下文和 2023 年 10 月的知识截止日期。",
         "o1": "o1 是 OpenAI 的新推理模型，支持图像和文本输入以及文本输出，适用于需要广泛通用知识的复杂任务。该模型具有 200K 上下文和 2023 年 10 月的知识截止日期。",
         "o1-preview": "o1 是 OpenAI 新的推理模型，适用于需要广泛通用知识的复杂任务。该模型具有 128K 上下文和 2023 年 10 月的知识截止日期。",
