@@ -37,24 +37,26 @@ type (
 		// shutdownCh is used to signal shutdown to all SSE connections
 		shutdownCh chan struct{}
 		// toolRespHandler is a chain of response handlers
-		toolRespHandler ResponseHandler
-		lastUpdateTime  time.Time
-		auth            auth.Auth
+		toolRespHandler           ResponseHandler
+		lastUpdateTime            time.Time
+		auth                      auth.Auth
+		transparentHeadersArgName string
 	}
 )
 
 // NewServer creates a new MCP server
-func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth) (*Server, error) {
+func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth, transparentHeadersArgName string) (*Server, error) {
 	s := &Server{
-		logger:          logger,
-		port:            port,
-		router:          gin.Default(),
-		state:           state.NewState(),
-		store:           store,
-		sessions:        sessionStore,
-		shutdownCh:      make(chan struct{}),
-		toolRespHandler: CreateResponseHandlerChain(),
-		auth:            a,
+		logger:                    logger,
+		port:                      port,
+		router:                    gin.Default(),
+		state:                     state.NewState(),
+		store:                     store,
+		sessions:                  sessionStore,
+		shutdownCh:                make(chan struct{}),
+		toolRespHandler:           CreateResponseHandlerChain(),
+		auth:                      a,
+		transparentHeadersArgName: transparentHeadersArgName,
 	}
 
 	// Load HTML templates

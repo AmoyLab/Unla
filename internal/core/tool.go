@@ -10,16 +10,19 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/net/proxy"
+
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
-	"golang.org/x/net/proxy"
+
+	"go.uber.org/zap"
 
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/template"
-	"go.uber.org/zap"
 )
 
 // prepareRequest prepares the HTTP request with templates and arguments
@@ -45,7 +48,15 @@ func prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.R
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Process header templates
+	// Transfer request header to downstream api request
+	for k, v := range tmplCtx.Request.Headers {
+		// Only transfer user-defined headers
+		if !slices.Contains([]string{"Accept", "Accept-Encoding", "Connection", "User-Agent", "Content-Length", "Content-Type"}, k) {
+			req.Header.Set(k, v)
+		}
+	}
+
+	// Process header templates(override mcp request header if key conflicts)
 	for k, v := range tool.Headers {
 		rendered, err := template.RenderTemplate(v, tmplCtx)
 		if err != nil {
@@ -147,6 +158,7 @@ func createHTTPClient(tool *config.ToolConfig) (*http.Client, error) {
 func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (*mcp.CallToolResult, error) {
 	// Fill default values for missing arguments
 	fillDefaultArgs(tool, args)
+	s.transferTransparentHeaderArgs(args, request)
 
 	// Normalize JSON string values in arguments
 	template.NormalizeJSONStringValues(args)
@@ -201,6 +213,7 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 	s.logger.Debug("sending HTTP request",
 		zap.String("tool", tool.Name),
 		zap.String("url", req.URL.String()),
+		zap.Any("header", req.Header),
 		zap.String("session_id", conn.Meta().ID))
 
 	resp, err := cli.Do(req)
@@ -252,6 +265,21 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 		zap.Int("status", resp.StatusCode))
 
 	return callToolResult, nil
+}
+
+// transferTransparentHeaderArgs transfer transparentHeaders from args to request
+func (s *Server) transferTransparentHeaderArgs(args map[string]any, request *http.Request) {
+	if transparentHeaders, exists := args[s.transparentHeadersArgName]; exists {
+		delete(args, s.transparentHeadersArgName)
+		s.logger.Debug("transfer transparent headers",
+			zap.String("transparentHeadersArgName", s.transparentHeadersArgName),
+			zap.Any("transparentHeaders", transparentHeaders))
+		for key, value := range transparentHeaders.(map[string]any) {
+			if v, ok := value.(string); ok {
+				request.Header.Add(key, v)
+			}
+		}
+	}
 }
 
 func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.ToolSchema, error) {

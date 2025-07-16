@@ -2,6 +2,7 @@ port: ${MCP_GATEWAY_PORT:5235}
 pid: "${MCP_GATEWAY_PID:/var/run/mcp-gateway.pid}"
 reload_interval: ${MCP_GATEWAY_RELOAD_INTERVAL:600s}
 reload_switch: ${MCP_GATEWAY_RELOAD_SWITCH:true}
+transparent_headers_arg_name: ${TRANSPARENT_HEADERS_ARG_NAME:x-transparent-headers}
 
 # Logger configuration
 logger:
