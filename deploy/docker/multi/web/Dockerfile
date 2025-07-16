@@ -34,7 +34,11 @@ COPY web/package*.json ./
 COPY web/pnpm-lock.yaml ./
 
 RUN npm install -g pnpm@9.15.0
+<<<<<<< HEAD
 RUN pnpm install
+=======
+RUN pnpm install --include=dev --ignore-scripts || pnpm install --include=dev --no-optional
+>>>>>>> 2993f85 (chore: Update Dockerfile to install build dependencies for native modules and improve pnpm installation command)
 
 COPY web/ .
 
