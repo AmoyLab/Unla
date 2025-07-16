@@ -213,7 +213,6 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 	s.logger.Debug("sending HTTP request",
 		zap.String("tool", tool.Name),
 		zap.String("url", req.URL.String()),
-		zap.Any("header", req.Header),
 		zap.String("session_id", conn.Meta().ID))
 
 	resp, err := cli.Do(req)
