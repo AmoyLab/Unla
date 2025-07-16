@@ -22,6 +22,28 @@ import (
 	"go.uber.org/zap"
 )
 
+// parseHeaderList parses comma-separated header list and returns a slice of trimmed, optionally lowercased headers
+func parseHeaderList(headerList string, caseInsensitive bool) []string {
+	if headerList == "" {
+		return []string{}
+	}
+	
+	headers := strings.Split(headerList, ",")
+	result := make([]string, 0, len(headers))
+	
+	for _, header := range headers {
+		header = strings.TrimSpace(header)
+		if header != "" {
+			if caseInsensitive {
+				header = strings.ToLower(header)
+			}
+			result = append(result, header)
+		}
+	}
+	
+	return result
+}
+
 type (
 	// Server represents the MCP server
 	Server struct {
@@ -37,26 +59,37 @@ type (
 		// shutdownCh is used to signal shutdown to all SSE connections
 		shutdownCh chan struct{}
 		// toolRespHandler is a chain of response handlers
-		toolRespHandler           ResponseHandler
-		lastUpdateTime            time.Time
-		auth                      auth.Auth
-		transparentHeadersArgName string
+		toolRespHandler ResponseHandler
+		lastUpdateTime  time.Time
+		auth            auth.Auth
+		forwardConfig   config.ForwardConfig
+		// Pre-parsed header lists for efficient lookup
+		ignoreHeaders   []string
+		allowHeaders    []string
+		caseInsensitive bool
 	}
 )
 
 // NewServer creates a new MCP server
-func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth, transparentHeadersArgName string) (*Server, error) {
+func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth, forwardConfig config.ForwardConfig) (*Server, error) {
 	s := &Server{
-		logger:                    logger,
-		port:                      port,
-		router:                    gin.Default(),
-		state:                     state.NewState(),
-		store:                     store,
-		sessions:                  sessionStore,
-		shutdownCh:                make(chan struct{}),
-		toolRespHandler:           CreateResponseHandlerChain(),
-		auth:                      a,
-		transparentHeadersArgName: transparentHeadersArgName,
+		logger:          logger,
+		port:            port,
+		router:          gin.Default(),
+		state:           state.NewState(),
+		store:           store,
+		sessions:        sessionStore,
+		shutdownCh:      make(chan struct{}),
+		toolRespHandler: CreateResponseHandlerChain(),
+		auth:            a,
+		forwardConfig:   forwardConfig,
+		caseInsensitive: forwardConfig.Header.CaseInsensitive,
+	}
+	
+	// Pre-parse header lists for efficient runtime lookup (only if forward is enabled)
+	if forwardConfig.Enabled {
+		s.ignoreHeaders = parseHeaderList(forwardConfig.Header.IgnoreHeaders, forwardConfig.Header.CaseInsensitive)
+		s.allowHeaders = parseHeaderList(forwardConfig.Header.AllowHeaders, forwardConfig.Header.CaseInsensitive)
 	}
 
 	// Load HTML templates
