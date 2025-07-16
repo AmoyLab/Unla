@@ -70,6 +70,7 @@ data:
   VITE_API_BASE_URL: {{ .Values.config.VITE_API_BASE_URL | quote }}
   VITE_WS_BASE_URL: {{ .Values.config.VITE_WS_BASE_URL | quote }}
   VITE_MCP_GATEWAY_BASE_URL: {{ .Values.config.VITE_MCP_GATEWAY_BASE_URL | quote }}
+  VITE_DIRECT_MCP_GATEWAY_MODIFIER: {{ .Values.config.VITE_DIRECT_MCP_GATEWAY_MODIFIER | quote }}
   VITE_BASE_URL: {{ .Values.config.VITE_BASE_URL | quote }}
 
   APISERVER_JWT_DURATION: {{ .Values.config.APISERVER_JWT_DURATION | quote }}

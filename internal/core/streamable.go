@@ -9,15 +9,19 @@ import (
 	"time"
 
 	"github.com/amoylab/unla/internal/common/cnst"
-	"github.com/amoylab/unla/pkg/version"
-
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
+
 	"github.com/amoylab/unla/internal/core/mcpproxy"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/amoylab/unla/pkg/version"
+
+
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // handleMCP handles MCP connections
@@ -221,10 +225,10 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		var err error
 		switch protoType {
 		case cnst.BackendProtoHttp:
-			// Get tools for HTTP backend
-			tools = s.state.GetToolSchemas(conn.Meta().Prefix)
-			if len(tools) == 0 {
-				tools = []mcp.ToolSchema{}
+			tools, err = s.fetchHTTPToolList(conn)
+			if err != nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
 			}
 		case cnst.BackendProtoStdio, cnst.BackendProtoSSE, cnst.BackendProtoStreamable:
 			transport := s.state.GetTransport(conn.Meta().Prefix)

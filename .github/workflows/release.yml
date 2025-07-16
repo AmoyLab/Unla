@@ -128,10 +128,6 @@ jobs:
       - name: Build web
         run: |
           cd web
-          VITE_API_BASE_URL=/api \
-          VITE_WS_BASE_URL=ws://localhost:5234/ws \
-          VITE_BASE_URL=/web \
-          VITE_MCP_GATEWAY_BASE_URL=http://localhost:5235 \
           pnpm run build
           mv dist ../web-build
 

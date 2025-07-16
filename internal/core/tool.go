@@ -10,20 +10,43 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/amoylab/unla/internal/mcp/session"
-	"github.com/amoylab/unla/pkg/mcp"
+	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
 
 	"github.com/amoylab/unla/internal/common/config"
+	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/internal/template"
-	"go.uber.org/zap"
+	"github.com/amoylab/unla/pkg/mcp"
 )
 
+// shouldIgnoreHeader checks if a header should be ignored based on configuration
+func (s *Server) shouldIgnoreHeader(headerName string) bool {
+	// If forward is disabled, don't ignore any headers (backward compatibility)
+	if !s.forwardConfig.Enabled {
+		return false
+	}
+
+	checkName := headerName
+	if s.caseInsensitive {
+		checkName = strings.ToLower(headerName)
+	}
+
+	// If allowHeaders is configured, use it exclusively (ignoreHeaders is ignored)
+	if len(s.allowHeaders) > 0 {
+		// Only allow headers that are in the allowHeaders list
+		return !slices.Contains(s.allowHeaders, checkName)
+	}
+
+	// If allowHeaders is not configured, use ignoreHeaders
+	return slices.Contains(s.ignoreHeaders, checkName)
+}
+
 // prepareRequest prepares the HTTP request with templates and arguments
-func prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.Request, error) {
+func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.Request, error) {
 	// Process endpoint template
 	endpoint, err := template.RenderTemplate(tool.Endpoint, tmplCtx)
 	if err != nil {
@@ -45,7 +68,15 @@ func prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.R
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Process header templates
+	// Transfer request header to downstream api request
+	for k, v := range tmplCtx.Request.Headers {
+		// Only transfer headers that are not in the ignore list
+		if !s.shouldIgnoreHeader(k) {
+			req.Header.Set(k, v)
+		}
+	}
+
+	// Process header templates(override mcp request header if key conflicts)
 	for k, v := range tool.Headers {
 		rendered, err := template.RenderTemplate(v, tmplCtx)
 		if err != nil {
@@ -144,9 +175,13 @@ func createHTTPClient(tool *config.ToolConfig) (*http.Client, error) {
 }
 
 // executeHTTPTool executes a tool with the given arguments
-func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (*mcp.CallToolResult, error) {
+func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfig,
+	args map[string]any, request *http.Request, serverCfg map[string]string) (*mcp.CallToolResult, error) {
 	// Fill default values for missing arguments
 	fillDefaultArgs(tool, args)
+
+	// Transfer forward headers from args to request HTTP headers
+	s.transferForwardHeaders(args, request)
 
 	// Normalize JSON string values in arguments
 	template.NormalizeJSONStringValues(args)
@@ -169,7 +204,7 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 	}
 
 	// Prepare HTTP request
-	req, err := prepareRequest(tool, tmplCtx)
+	req, err := s.prepareRequest(tool, tmplCtx)
 	if err != nil {
 		s.logger.Error("failed to prepare HTTP request",
 			zap.String("tool", tool.Name),
@@ -252,6 +287,43 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 		zap.Int("status", resp.StatusCode))
 
 	return callToolResult, nil
+}
+
+// transferForwardHeaders transfer forward headers from args to request
+func (s *Server) transferForwardHeaders(args map[string]any, request *http.Request) {
+	// If forward is disabled, skip processing
+	if !s.forwardConfig.Enabled {
+		return
+	}
+
+	// Use the configured key for header from mcp_arg
+	headerKey := s.forwardConfig.McpArg.KeyForHeader
+	if headerKey == "" {
+		return
+	}
+
+	if forwardHeaders, exists := args[headerKey]; exists {
+		delete(args, headerKey)
+		s.logger.Debug("transfer forward headers",
+			zap.String("headerKey", headerKey),
+			zap.Any("forwardHeaders", forwardHeaders))
+		if forwardHeaders == nil {
+			return
+		}
+		headers, ok := forwardHeaders.(map[string]any)
+		if !ok || len(headers) == 0 {
+			return
+		}
+		for key, value := range headers {
+			if v, ok := value.(string); ok {
+				if s.forwardConfig.Header.OverrideExisting {
+					request.Header.Set(key, v)
+				} else {
+					request.Header.Add(key, v)
+				}
+			}
+		}
+	}
 }
 
 func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.ToolSchema, error) {

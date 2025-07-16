@@ -106,3 +106,13 @@ auth:
       - "Mcp-Session-Id"
       - "mcp-protocol-version"
     allowCredentials: true
+
+forward:
+  enabled: ${FORWARD_ENABLED:false}
+  mcp_arg:
+    key_for_header: "${FORWARD_MCP_ARG_KEY_FOR_HEADER:__forwardHeaders}"
+  header:
+    allow_headers: "${FORWARD_ALLOW_HEADERS:}"
+    ignore_headers: "${FORWARD_IGNORE_HEADERS: Accept, Accept-Encoding, Accept-Language, Host, Cookie, Connection, User-Agent, Content-Length, Content-Type}"
+    case_insensitive: ${FORWARD_HEADER_CASE_INSENSITIVE:true}
+    override_existing: ${FORWARD_HEADER_OVERRIDE_EXISTING:false}

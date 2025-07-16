@@ -52,14 +52,10 @@ jobs:
         run: |
           cd web
           pnpm run lint
-          
+
       - name: Build web (dry run)
         run: |
           cd web
-          VITE_API_BASE_URL=/api \
-          VITE_WS_BASE_URL=/api/ws \
-          VITE_BASE_URL=/ \
-          VITE_MCP_GATEWAY_BASE_URL=/mcp \
           pnpm run build
 
   go-tests:
@@ -89,7 +85,7 @@ jobs:
           go test ./cmd/... -coverprofile=coverage-cmd.txt -covermode=atomic
           go test ./internal/... -coverprofile=coverage-internal.txt -covermode=atomic
           go test ./pkg/... -coverprofile=coverage-pkg.txt -covermode=atomic
-          
+
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
         with:
@@ -108,7 +104,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.24.1'
-          
+
       - name: Check if builds succeed
         run: |
           go build -v ./cmd/apiserver

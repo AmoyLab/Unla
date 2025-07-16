@@ -17,14 +17,10 @@ FROM node:20.18.0 AS web-builder
 
 WORKDIR /app/web
 
-COPY web/package*.json ./
-COPY web/pnpm-lock.yaml ./
+COPY web/ .
 
 RUN npm install -g pnpm@9.15.0
 RUN pnpm install --frozen-lockfile
-
-COPY web/ .
-
 RUN pnpm run build
 
 FROM ghcr.io/amoylab/unla/base:latest AS runtime

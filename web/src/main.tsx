@@ -56,6 +56,7 @@ export interface RuntimeConfig {
     enableExperimental: boolean;
     [key: string]: boolean;
   };
+  VITE_DIRECT_MCP_GATEWAY_MODIFIER: string;
   LLM_CONFIG_ADMIN_ONLY: boolean;
   [key: string]: unknown; // For any additional properties
 }
@@ -68,6 +69,7 @@ const defaultRuntimeConfig: RuntimeConfig = {
   features: {
     enableExperimental: false
   },
+  VITE_DIRECT_MCP_GATEWAY_MODIFIER: ':5235',
   LLM_CONFIG_ADMIN_ONLY: false
 };
 
@@ -118,6 +120,10 @@ const fetchRuntimeConfig = async () => {
         ...defaultRuntimeConfig.features,
         ...(response.data.features || {})
       },
+      VITE_DIRECT_MCP_GATEWAY_MODIFIER:
+        typeof response.data.VITE_DIRECT_MCP_GATEWAY_MODIFIER === 'undefined'
+          ? defaultRuntimeConfig.VITE_DIRECT_MCP_GATEWAY_MODIFIER
+          : (response.data.VITE_DIRECT_MCP_GATEWAY_MODIFIER as string),
       // Ensure LLM_CONFIG_ADMIN_ONLY is set to false if not present
       LLM_CONFIG_ADMIN_ONLY: typeof response.data.LLM_CONFIG_ADMIN_ONLY === 'undefined' ? false : response.data.LLM_CONFIG_ADMIN_ONLY
     };
