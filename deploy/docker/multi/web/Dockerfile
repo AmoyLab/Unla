@@ -18,10 +18,27 @@ FROM node:20.18.0 AS web-builder
 
 WORKDIR /app/web
 
-COPY web/ .
+# Set environment variables for consistent builds
+ENV NODE_ENV=production
+ENV CI=true
+ENV VITE_BASE_URL=/
+
+# Install build dependencies for native modules
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY web/package*.json ./
+COPY web/pnpm-lock.yaml ./
 
 RUN npm install -g pnpm@9.15.0
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
+
+COPY web/ .
+
+# Clean any potential cache and build fresh
 RUN pnpm run build
 
 FROM nginx:1.27.5-bookworm
