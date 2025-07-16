@@ -273,7 +273,14 @@ func (s *Server) transferTransparentHeaderArgs(args map[string]any, request *htt
 		s.logger.Debug("transfer transparent headers",
 			zap.String("transparentHeadersArgName", s.transparentHeadersArgName),
 			zap.Any("transparentHeaders", transparentHeaders))
-		for key, value := range transparentHeaders.(map[string]any) {
+		if transparentHeaders == nil {
+			return
+		}
+		headers, ok := transparentHeaders.(map[string]any)
+		if !ok || len(headers) == 0 {
+			return
+		}
+		for key, value := range headers {
 			if v, ok := value.(string); ok {
 				request.Header.Add(key, v)
 			}
