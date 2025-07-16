@@ -51,7 +51,8 @@ func prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.R
 	// Transfer request header to downstream api request
 	for k, v := range tmplCtx.Request.Headers {
 		// Only transfer user-defined headers
-		if !slices.Contains([]string{"Accept", "Accept-Encoding", "Connection", "User-Agent", "Content-Length", "Content-Type"}, k) {
+		if !slices.Contains([]string{"accept", "accept-encoding", "accept-language", "host", "cookie",
+			"connection", "user-agent", "content-length", "content-type"}, strings.ToLower(k)) {
 			req.Header.Set(k, v)
 		}
 	}
