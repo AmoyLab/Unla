@@ -88,6 +88,23 @@ const getGatewayBaseUrl = () => {
   return `${origin}${base}`;
 };
 
+// Helper to get direct gateway base URL using modifier
+const getDirectGatewayBaseUrl = () => {
+  let modifier = (window.RUNTIME_CONFIG?.VITE_DIRECT_MCP_GATEWAY_MODIFIER as string) || ':5235';
+  const origin = window.location.origin.replace(/\/+$/, '');
+
+  if (modifier.startsWith('http')) {
+    return modifier.replace(/\/+$/, '');
+  }
+
+  if (!modifier.startsWith('/') && !modifier.startsWith(':')) {
+    modifier = '/' + modifier;
+  }
+
+  const originWithoutPort = origin.replace(/:\d+$/, '');
+  return `${originWithoutPort}${modifier}`.replace(/\/+$/, '');
+};
+
 export function GatewayManager() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -710,14 +727,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">SSE:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/sse`}
+                                                  {`${getDirectGatewayBaseUrl()}${router.prefix}/sse`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/sse`,
+                                                    `${getDirectGatewayBaseUrl()}${router.prefix}/sse`,
                                                     `direct-sse-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -727,14 +744,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">Streamable HTTP:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/mcp`}
+                                                  {`${getDirectGatewayBaseUrl()}${router.prefix}/mcp`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/mcp`,
+                                                    `${getDirectGatewayBaseUrl()}${router.prefix}/mcp`,
                                                     `direct-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -918,14 +935,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">SSE:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/sse`}
+                                                  {`${getDirectGatewayBaseUrl()}${router.prefix}/sse`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/sse`,
+                                                    `${getDirectGatewayBaseUrl()}${router.prefix}/sse`,
                                                     `direct-sse-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -935,14 +952,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">Streamable HTTP:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/mcp`}
+                                                  {`${getDirectGatewayBaseUrl()}${router.prefix}/mcp`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/mcp`,
+                                                    `${getDirectGatewayBaseUrl()}${router.prefix}/mcp`,
                                                     `direct-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -1282,14 +1299,14 @@ export function GatewayManager() {
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs text-default-500">SSE:</span>
                                       <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                        {`${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/sse`}
+                                        {`${getDirectGatewayBaseUrl()}${router.prefix}/sse`}
                                       </code>
                                       <Button
                                         isIconOnly
                                         size="sm"
                                         variant="light"
                                         onPress={() => handleCopyWithIcon(
-                                          `${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/sse`,
+                                          `${getDirectGatewayBaseUrl()}${router.prefix}/sse`,
                                           `direct-sse-${currentModalServer?.name}-${idx}`
                                         )}
                                       >
@@ -1299,14 +1316,14 @@ export function GatewayManager() {
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs text-default-500">Streamable HTTP:</span>
                                       <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                        {`${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/mcp`}
+                                        {`${getDirectGatewayBaseUrl()}${router.prefix}/mcp`}
                                       </code>
                                       <Button
                                         isIconOnly
                                         size="sm"
                                         variant="light"
                                         onPress={() => handleCopyWithIcon(
-                                          `${window.location.origin.match(/:\d+$/) ? window.location.origin.replace(/:\d+$/, ':5235') : `${window.location.origin}:5235`}${router.prefix}/mcp`,
+                                          `${getDirectGatewayBaseUrl()}${router.prefix}/mcp`,
                                           `direct-mcp-${currentModalServer?.name}-${idx}`
                                         )}
                                       >

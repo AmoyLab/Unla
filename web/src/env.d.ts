@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   
   // App-specific env variables
   readonly VITE_MCP_GATEWAY_BASE_URL: string;
+  readonly VITE_DIRECT_MCP_GATEWAY_MODIFIER: string;
   readonly VITE_API_BASE_URL: string;
   readonly VITE_WS_BASE_URL: string;
   

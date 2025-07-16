@@ -18,12 +18,27 @@ type (
 		Password string `yaml:"password"`
 	}
 
+	// ForwardConfig represents the forward configuration for header handling
+	ForwardConfig struct {
+		Enabled bool `yaml:"enabled"`
+		McpArg  struct {
+			KeyForHeader string `yaml:"key_for_header"`
+		} `yaml:"mcp_arg"`
+		Header struct {
+			AllowHeaders      string `yaml:"allow_headers"`
+			IgnoreHeaders     string `yaml:"ignore_headers"`
+			CaseInsensitive   bool   `yaml:"case_insensitive"`
+			OverrideExisting  bool   `yaml:"override_existing"`
+		} `yaml:"header"`
+	}
+
 	// MCPGatewayConfig represents the MCP gateway configuration
 	MCPGatewayConfig struct {
 		Port           int              `yaml:"port"`
 		ReloadPort     int              `yaml:"reload_port"`
 		ReloadInterval time.Duration    `yaml:"reload_interval"`
 		ReloadSwitch   bool             `yaml:"reload_switch"`
+		Forward        ForwardConfig    `yaml:"forward"`
 		PID            string           `yaml:"pid"`
 		SuperAdmin     SuperAdminConfig `yaml:"super_admin"`
 		Logger         LoggerConfig     `yaml:"logger"`

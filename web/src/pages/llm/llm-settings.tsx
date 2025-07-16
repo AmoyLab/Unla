@@ -559,6 +559,7 @@ const LLMSettings: React.FC = () => {
               startContent={<Search className="w-4 h-4 text-gray-400" />}
               className="flex-1"
               size="sm"
+              autoComplete="off"
             />
             <Button
               color="primary"
@@ -683,6 +684,7 @@ const LLMSettings: React.FC = () => {
                     onChange={(e) => setConfig((prev: Record<string, unknown>) => ({ ...prev, apiKey: e.target.value }))}
                     type={showApiKey ? 'text' : 'password'}
                     isRequired={selectedProvider.settings.apiKeyRequired}
+                    autoComplete="new-password"
                     endContent={
                       <Button
                         size="sm"

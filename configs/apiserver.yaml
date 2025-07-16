@@ -79,6 +79,7 @@ web:
   api_base_url: "${VITE_API_BASE_URL:/api}"
   ws_base_url: "${VITE_WS_BASE_URL:/api/ws}"
   mcp_gateway_base_url: "${VITE_MCP_GATEWAY_BASE_URL:/gateway}"
+  direct_mcp_gateway_modifier: "${VITE_DIRECT_MCP_GATEWAY_MODIFIER::5235}"
   base_url: "${VITE_BASE_URL:/}"
   debug_mode: ${DEBUG_MODE:false}
   enable_experimental: ${ENABLE_EXPERIMENTAL:false}

@@ -24,19 +24,20 @@ func NewRuntimeConfigHandler(cfg *config.APIServerConfig) *RuntimeConfigHandler 
 func (h *RuntimeConfigHandler) HandleRuntimeConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		// Keep original environment variables for backward compatibility
-		"VITE_API_BASE_URL":         h.cfg.Web.APIBaseURL,
-		"VITE_WS_BASE_URL":          h.cfg.Web.WSBaseURL,
-		"VITE_MCP_GATEWAY_BASE_URL": h.cfg.Web.MCPGatewayBaseURL,
-		"VITE_BASE_URL":             h.cfg.Web.BaseURL,
+		"VITE_API_BASE_URL":                h.cfg.Web.APIBaseURL,
+		"VITE_WS_BASE_URL":                 h.cfg.Web.WSBaseURL,
+		"VITE_MCP_GATEWAY_BASE_URL":        h.cfg.Web.MCPGatewayBaseURL,
+		"VITE_DIRECT_MCP_GATEWAY_MODIFIER": h.cfg.Web.DirectMCPGatewayModifier,
+		"VITE_BASE_URL":                    h.cfg.Web.BaseURL,
 
 		// Add new properties matching our TypeScript interface
-		"apiBaseUrl": h.cfg.Web.APIBaseURL,
-		"debugMode":  h.cfg.Web.DebugMode,
-		"version":    version.Version,
+		"apiBaseUrl":               h.cfg.Web.APIBaseURL,
+		"debugMode":                h.cfg.Web.DebugMode,
+		"version":                  version.Version,
+		"directMcpGatewayModifier": h.cfg.Web.DirectMCPGatewayModifier,
 		"features": gin.H{
 			"enableExperimental": h.cfg.Web.EnableExperimental,
 		},
 		"LLM_CONFIG_ADMIN_ONLY": h.cfg.Web.LLMConfigAdminOnly,
 	})
 }
-
