@@ -291,7 +291,7 @@ export function LLMChatInterface() {
 
       await llmChatService.sendMessage(
         selectedProvider,
-        updatedMessages,
+        buildLLMMessages(updatedMessages),
         selectedModel,
         availableTools,
         (chunk: string) => {
@@ -390,16 +390,36 @@ export function LLMChatInterface() {
 
   // Helper to build LLM messages array with system prompt
   const buildLLMMessages = (userMessages: Message[]) => {
-    if (!systemPrompt) return userMessages;
-    // System prompt as a special message (not shown in chat)
+    if (!systemPrompt) {
+      // DEBUG: No systemPrompt set, returning userMessages only
+      //console.debug('[buildLLMMessages] empty systemPrompt');
+      return userMessages;
+    }
+    // Instead of a separate system message, prepend the system prompt to the first user message
+    if (userMessages.length > 0) {
+      // Only prepend to the first user message (sender: 'user')
+      const firstUserIdx = userMessages.findIndex(msg => msg.sender === 'user');
+      if (firstUserIdx !== -1) {
+        const newMessages = [...userMessages];
+        newMessages[firstUserIdx] = {
+          ...newMessages[firstUserIdx],
+          content: `${systemPrompt}\n\n${newMessages[firstUserIdx].content}`
+        };
+        //console.debug('[buildLLMMessages] System prompt prepended to first user message:', newMessages);
+        return newMessages;
+      }
+      // If no user message, fallback to original array
+      return userMessages;
+    }
+    // If no user messages, just return a single message with the system prompt
     const sysMsg: Message = {
       id: 'system-prompt',
       session_id: sessionId!,
       content: systemPrompt,
-      sender: 'system' as const,
+      sender: 'user' as const,
       timestamp: new Date().toISOString(),
     };
-    return [sysMsg, ...userMessages];
+    return [sysMsg];
   };
 
   const handleSend = async () => {
@@ -413,7 +433,8 @@ export function LLMChatInterface() {
       sender: 'user',
       timestamp: new Date().toISOString(),
     };
-    setMessages((prev: Message[]) => [...prev, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput('');
     setIsGenerating(true);
     try {
@@ -446,7 +467,7 @@ export function LLMChatInterface() {
     try {
       await llmChatService.sendMessage(
         selectedProvider,
-        buildLLMMessages([...messages, userMessage]),
+        buildLLMMessages(nextMessages),
         selectedModel,
         availableTools,
         (chunk: string) => {
