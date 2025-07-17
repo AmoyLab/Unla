@@ -236,7 +236,6 @@ export function LLMChatInterface() {
   // Handle tool call results and continue LLM conversation
   const handleToolCallResult = async (toolCall: ToolCall, result: string) => {
     if (!sessionId) return;
-
     try {
       const toolResultMessage: Message = {
         id: uuidv4(),
@@ -250,9 +249,7 @@ export function LLMChatInterface() {
           result: result
         }
       };
-
-      setMessages((prev: Message[]) => [...prev, toolResultMessage]);
-
+      setMessages(prev => [...prev, toolResultMessage]);
       try {
         await saveChatMessage(toolResultMessage);
       } catch (error) {
@@ -389,37 +386,23 @@ export function LLMChatInterface() {
   }, [messages]);
 
   // Helper to build LLM messages array with system prompt
-  const buildLLMMessages = (userMessages: Message[]) => {
-    if (!systemPrompt) {
-      // DEBUG: No systemPrompt set, returning userMessages only
-      //console.debug('[buildLLMMessages] empty systemPrompt');
-      return userMessages;
-    }
-    // Instead of a separate system message, prepend the system prompt to the first user message
-    if (userMessages.length > 0) {
-      // Only prepend to the first user message (sender: 'user')
-      const firstUserIdx = userMessages.findIndex(msg => msg.sender === 'user');
-      if (firstUserIdx !== -1) {
-        const newMessages = [...userMessages];
-        newMessages[firstUserIdx] = {
-          ...newMessages[firstUserIdx],
-          content: `${systemPrompt}\n\n${newMessages[firstUserIdx].content}`
-        };
-        //console.debug('[buildLLMMessages] System prompt prepended to first user message:', newMessages);
-        return newMessages;
-      }
-      // If no user message, fallback to original array
-      return userMessages;
-    }
-    // If no user messages, just return a single message with the system prompt
-    const sysMsg: Message = {
+  const buildLLMMessages = (userMessages: Message[]): Message[] => {
+    // If no system prompt, return messages unchanged
+    if (!systemPrompt) return userMessages;
+
+    // If system prompt already present at the start, return as is
+    const hasSystemPrompt = userMessages.length > 0 && userMessages[0].id === 'system-prompt';
+    if (hasSystemPrompt) return userMessages;
+
+    // Create system prompt message
+    const systemPromptMsg: Message = {
       id: 'system-prompt',
-      session_id: sessionId!,
+      session_id: sessionId || '',
       content: systemPrompt,
-      sender: 'user' as const,
+      sender: 'user',
       timestamp: new Date().toISOString(),
     };
-    return [sysMsg];
+    return [systemPromptMsg, ...userMessages];
   };
 
   const handleSend = async () => {
@@ -433,8 +416,7 @@ export function LLMChatInterface() {
       sender: 'user',
       timestamp: new Date().toISOString(),
     };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsGenerating(true);
     try {
@@ -465,9 +447,11 @@ export function LLMChatInterface() {
     };
     setMessages((prev: Message[]) => [...prev, assistantMessage]);
     try {
+      // Compose the messages array for LLM: all user messages plus the new user message and the assistant placeholder
+      const messagesForLLM = buildLLMMessages([...messages, userMessage]);
       await llmChatService.sendMessage(
         selectedProvider,
-        buildLLMMessages(nextMessages),
+        messagesForLLM,
         selectedModel,
         availableTools,
         (chunk: string) => {
