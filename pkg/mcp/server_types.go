@@ -52,10 +52,14 @@ type (
 	ToolSchema struct {
 		// The name of the tool
 		Name string `json:"name"`
+		// A human-readable title for the tool (optional)
+		Title string `json:"title,omitempty"`
 		// A human-readable description of the tool
 		Description string `json:"description"`
 		// A JSON Schema object defining the expected parameters for the tool
 		InputSchema ToolInputSchema `json:"inputSchema"`
+		// A JSON Schema object defining the expected output of the tool (optional)
+		OutputSchema *ToolInputSchema `json:"outputSchema,omitempty"`
 	}
 
 	ToolInputSchema struct {

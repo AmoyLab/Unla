@@ -145,9 +145,11 @@ func (t *StdioTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, erro
 		}
 
 		tools[i] = mcp.ToolSchema{
-			Name:        schema.Name,
-			Description: schema.Description,
-			InputSchema: inputSchema,
+			Name:         schema.Name,
+			Title:        "", // Will be supported when mcpgo library updates
+			Description:  schema.Description,
+			InputSchema:  inputSchema,
+			OutputSchema: nil, // Will be supported when mcpgo library updates
 		}
 	}
 

@@ -364,9 +364,11 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		toolSchemas := make([]mcp.ToolSchema, len(tools))
 		for i, tool := range tools {
 			toolSchemas[i] = mcp.ToolSchema{
-				Name:        tool.Name,
-				Description: tool.Description,
-				InputSchema: tool.InputSchema,
+				Name:         tool.Name,
+				Title:        tool.Title,
+				Description:  tool.Description,
+				InputSchema:  tool.InputSchema,
+				OutputSchema: tool.OutputSchema,
 			}
 		}
 

@@ -62,6 +62,7 @@ type (
 
 	ToolConfig struct {
 		Name         string            `json:"name" yaml:"name"`
+		Title        string            `json:"title,omitempty" yaml:"title,omitempty"`
 		Description  string            `json:"description,omitempty" yaml:"description,omitempty"`
 		Method       string            `json:"method" yaml:"method"`
 		Endpoint     string            `json:"endpoint" yaml:"endpoint"`
@@ -71,6 +72,7 @@ type (
 		RequestBody  string            `json:"requestBody"  yaml:"requestBody"`
 		ResponseBody string            `json:"responseBody" yaml:"responseBody"`
 		InputSchema  map[string]any    `json:"inputSchema,omitempty" yaml:"inputSchema,omitempty"`
+		OutputSchema map[string]any    `json:"outputSchema,omitempty" yaml:"outputSchema,omitempty"`
 	}
 
 	MCPServerConfig struct {
@@ -186,8 +188,9 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 		}
 	}
 
-	return mcp.ToolSchema{
+	result := mcp.ToolSchema{
 		Name:        t.Name,
+		Title:       t.Title,
 		Description: t.Description,
 		InputSchema: mcp.ToolInputSchema{
 			Type:       "object",
@@ -195,6 +198,16 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 			Required:   required,
 		},
 	}
+
+	// Add output schema if provided
+	if t.OutputSchema != nil {
+		result.OutputSchema = &mcp.ToolInputSchema{
+			Type:       "object",
+			Properties: t.OutputSchema,
+		}
+	}
+
+	return result
 }
 
 // ToPromptSchema converts a PromptConfig to a PromptSchema
