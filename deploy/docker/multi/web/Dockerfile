@@ -18,35 +18,10 @@ FROM node:20.18.0 AS web-builder
 
 WORKDIR /app/web
 
-# Set environment variables for consistent builds
-ENV NODE_ENV=production
-ENV CI=true
-ENV VITE_BASE_URL=/
-
-# Install build dependencies for native modules
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY web/package*.json ./
-COPY web/pnpm-lock.yaml ./
-
-RUN npm install -g pnpm@9.15.0
-<<<<<<< HEAD
-<<<<<<< HEAD
-RUN pnpm install
-=======
-RUN pnpm install --include=dev --ignore-scripts || pnpm install --include=dev --no-optional
->>>>>>> 2993f85 (chore: Update Dockerfile to install build dependencies for native modules and improve pnpm installation command)
-=======
-RUN pnpm install
->>>>>>> a6483bd (chore: Simplify pnpm installation command in Dockerfile)
-
 COPY web/ .
 
-# Clean any potential cache and build fresh
+RUN npm install -g pnpm@9.15.0
+RUN pnpm install --frozen-lockfile
 RUN pnpm run build
 
 FROM nginx:1.27.5-bookworm

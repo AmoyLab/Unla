@@ -7,6 +7,7 @@ import (
 
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/pkg/mcp"
+	"github.com/amoylab/unla/pkg/utils"
 )
 
 type (
@@ -71,6 +72,7 @@ type (
 		RequestBody  string            `json:"requestBody"  yaml:"requestBody"`
 		ResponseBody string            `json:"responseBody" yaml:"responseBody"`
 		InputSchema  map[string]any    `json:"inputSchema,omitempty" yaml:"inputSchema,omitempty"`
+		Annotations  map[string]any    `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	}
 
 	MCPServerConfig struct {
@@ -125,9 +127,9 @@ type (
 	}
 
 	PromptConfig struct {
-		Name        string              `json:"name" yaml:"name"`
-		Description string              `json:"description" yaml:"description"`
-		Arguments   []PromptArgument    `json:"arguments" yaml:"arguments"`
+		Name           string           `json:"name" yaml:"name"`
+		Description    string           `json:"description" yaml:"description"`
+		Arguments      []PromptArgument `json:"arguments" yaml:"arguments"`
 		PromptResponse []PromptResponse `json:"promptResponse,omitempty" yaml:"promptResponse,omitempty"`
 	}
 
@@ -185,6 +187,16 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 			properties[k] = v
 		}
 	}
+	var annotations *mcp.ToolAnnotations
+	if t.Annotations != nil {
+		annotations = &mcp.ToolAnnotations{
+			Title:           utils.GetString(t.Annotations, "title", ""),
+			DestructiveHint: utils.GetBool(t.Annotations, "destructiveHint", true),
+			IdempotentHint:  utils.GetBool(t.Annotations, "idempotentHint", false),
+			OpenWorldHint:   utils.GetBool(t.Annotations, "openWorldHint", true),
+			ReadOnlyHint:    utils.GetBool(t.Annotations, "readOnlyHint", false),
+		}
+	}
 
 	return mcp.ToolSchema{
 		Name:        t.Name,
@@ -194,6 +206,7 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 			Properties: properties,
 			Required:   required,
 		},
+		Annotations: annotations,
 	}
 }
 
@@ -218,9 +231,9 @@ func (t *PromptConfig) ToPromptSchema() mcp.PromptSchema {
 		})
 	}
 	return mcp.PromptSchema{
-		Name:          t.Name,
-		Description:   t.Description,
-		Arguments:     args,
+		Name:           t.Name,
+		Description:    t.Description,
+		Arguments:      args,
 		PromptResponse: responses,
 	}
 }
