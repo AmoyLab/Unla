@@ -367,6 +367,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				Name:        tool.Name,
 				Description: tool.Description,
 				InputSchema: tool.InputSchema,
+				Annotations: tool.Annotations,
 			}
 		}
 
@@ -461,7 +462,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		}
 
 		var params struct {
-			Name string `json:"name"`
+			Name      string            `json:"name"`
 			Arguments map[string]string `json:"arguments"`
 		}
 
@@ -547,10 +548,9 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				},
 			})
 		}
-		
+
 		s.sendSuccessResponse(c, conn, req, resp, true)
 		return
-
 
 	default:
 		s.sendProtocolError(c, req.Id, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)

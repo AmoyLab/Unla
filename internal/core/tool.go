@@ -90,7 +90,10 @@ func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Conte
 
 	// Process arguments for headers and query parameters
 	for _, arg := range tool.Args {
-		value := fmt.Sprint(tmplCtx.Args[arg.Name])
+		value := fmt.Sprint(args[arg.Name])
+		if value == "" || value == "<nil>" {
+			continue
+		}
 		switch strings.ToLower(arg.Position) {
 		case "header":
 			req.Header.Set(arg.Name, value)

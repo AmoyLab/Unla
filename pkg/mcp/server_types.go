@@ -56,6 +56,18 @@ type (
 		Description string `json:"description"`
 		// A JSON Schema object defining the expected parameters for the tool
 		InputSchema ToolInputSchema `json:"inputSchema"`
+		// Annotations for the tool
+		Annotations *ToolAnnotations `json:"annotations,omitempty"`
+	}
+
+	// https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-03-26/schema.json
+	ToolAnnotations struct {
+		DestructiveHint bool `json:"destructiveHint,omitempty"`
+		IdempotentHint  bool `json:"idempotentHint,omitempty"`
+		OpenWorldHint   bool `json:"openWorldHint,omitempty"`
+		ReadOnlyHint    bool `json:"readOnlyHint,omitempty"`
+		// A human-readable title for the tool.
+		Title string `json:"title,omitempty"`
 	}
 
 	ToolInputSchema struct {
@@ -232,9 +244,9 @@ type (
 	// PromptSchema and related types
 
 	PromptSchema struct {
-		Name        string                 `json:"name" yaml:"name"`
-		Description string                 `json:"description" yaml:"description"`
-		Arguments   []PromptArgumentSchema `json:"arguments" yaml:"arguments"`
+		Name           string                 `json:"name" yaml:"name"`
+		Description    string                 `json:"description" yaml:"description"`
+		Arguments      []PromptArgumentSchema `json:"arguments" yaml:"arguments"`
 		PromptResponse []PromptResponseSchema `json:"promptResponse,omitempty" yaml:"promptResponse,omitempty"`
 	}
 
@@ -245,14 +257,14 @@ type (
 	}
 
 	PromptResponseSchema struct {
-		Role    string                `json:"role" yaml:"role"`
+		Role    string                      `json:"role" yaml:"role"`
 		Content PromptResponseContentSchema `json:"content" yaml:"content"`
 	}
 
 	PromptResponseContentSchema struct {
 		Type string `json:"type" yaml:"type"`
 		Text string `json:"text" yaml:"text"`
-	}	
+	}
 )
 
 // NewInitializeRequest creates a new initialize request
@@ -377,4 +389,3 @@ func NewCallToolResultError(text string) *CallToolResult {
 		IsError: true,
 	}
 }
-
