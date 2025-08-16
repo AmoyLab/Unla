@@ -517,7 +517,7 @@ func (s *DBStore) ListUpdated(_ context.Context, since time.Time) ([]*config.MCP
 	var versions []MCPConfigVersion
 	err := s.db.Model(&MCPConfigVersion{}).
 		Where("created_at > ?", since).
-		Order("created_at DESC").
+		Order("created_at ASC").
 		Find(&versions).Error
 	if err != nil {
 		return nil, err
