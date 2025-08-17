@@ -399,7 +399,7 @@ export function LLMChatInterface() {
       id: 'system-prompt',
       session_id: sessionId || '',
       content: systemPrompt,
-      sender: 'user',
+      sender: 'system' as const, 
       timestamp: new Date().toISOString(),
     };
     return [systemPromptMsg, ...userMessages];
