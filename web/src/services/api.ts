@@ -599,4 +599,51 @@ export const saveChatMessage = async (message: {
   }
 };
 
+// MCP Server Capabilities API
+export const getMCPServerCapabilities = async (tenant: string, serverName: string) => {
+  try {
+    const response = await api.get(`/mcp/capabilities/${tenant}/${serverName}`);
+    return response.data.data || response.data;
+  } catch (error) {
+    handleApiError(error, 'errors.fetch_mcp_capabilities');
+    throw error;
+  }
+};
+
+// MCP Server Capabilities Statistics API
+export const getMCPServerCapabilitiesStats = async (tenant: string, serverName: string) => {
+  try {
+    const response = await api.get(`/mcp/capabilities/${tenant}/${serverName}/stats`);
+    return response.data.data || response.data;
+  } catch (error) {
+    handleApiError(error, 'errors.fetch_mcp_capabilities_stats');
+    throw error;
+  }
+};
+
+// Tool Status Management APIs
+export const updateToolStatus = async (tenant: string, serverName: string, toolName: string, enabled: boolean) => {
+  try {
+    const response = await api.put(`/mcp/capabilities/${tenant}/${serverName}/tools/${toolName}/status`, {
+      enabled
+    });
+    return response.data.data || response.data;
+  } catch (error) {
+    handleApiError(error, 'errors.update_tool_status');
+    throw error;
+  }
+};
+
+export const batchUpdateToolStatus = async (tenant: string, serverName: string, updates: Array<{toolName: string; enabled: boolean}>) => {
+  try {
+    const response = await api.put(`/mcp/capabilities/${tenant}/${serverName}/tools/status`, {
+      updates
+    });
+    return response.data.data || response.data;
+  } catch (error) {
+    handleApiError(error, 'errors.batch_update_tool_status');
+    throw error;
+  }
+};
+
 export default api;

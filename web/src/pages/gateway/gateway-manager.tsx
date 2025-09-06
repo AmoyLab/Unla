@@ -44,6 +44,7 @@ import {
   deleteMCPServer,
   exportMCPServer,
   getMCPServers,
+  getMCPServerCapabilitiesStats,
   getTenant,
   getUserAuthorizedTenants,
   syncMCPServers,
@@ -128,6 +129,7 @@ export function GatewayManager() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [serverToDelete, setServerToDelete] = React.useState<Gateway | null>(null);
   const [copiedStates, setCopiedStates] = React.useState<{ [key: string]: boolean }>({});
+  const [capabilitiesStats, setCapabilitiesStats] = React.useState<{[serverKey: string]: any}>({});
 
   // Listen for theme changes
   React.useEffect(() => {
@@ -182,6 +184,8 @@ export function GatewayManager() {
 
     fetchMCPServers();
   }, [t, selectedTenant, tenants]);
+
+  // 延迟这个 useEffect，放到 fetchAllCapabilitiesStats 定义之后
 
   // Get user's authorized tenants
   React.useEffect(() => {
@@ -479,6 +483,107 @@ export function GatewayManager() {
     }, 1000);
   };
 
+  // 获取服务器能力统计信息
+  const fetchCapabilitiesStats = React.useCallback(async (server: Gateway) => {
+    if (!server.tenant || !server.name) return;
+    
+    const serverKey = `${server.tenant}-${server.name}`;
+    try {
+      const stats = await getMCPServerCapabilitiesStats(server.tenant, server.name);
+      setCapabilitiesStats(prev => ({
+        ...prev,
+        [serverKey]: stats
+      }));
+    } catch (error) {
+      // 静默失败，不显示错误提示
+      console.warn(`Failed to fetch capabilities stats for ${serverKey}:`, error);
+    }
+  }, []);
+
+  // 批量获取所有服务器的统计信息
+  const fetchAllCapabilitiesStats = React.useCallback(async () => {
+    if (!mcpservers || mcpservers.length === 0) return;
+    
+    const promises = mcpservers.map(server => fetchCapabilitiesStats(server));
+    await Promise.allSettled(promises);
+  }, [mcpservers, fetchCapabilitiesStats]);
+
+  // Fetch capabilities stats when servers are loaded
+  React.useEffect(() => {
+    if (mcpservers && mcpservers.length > 0) {
+      fetchAllCapabilitiesStats();
+    }
+  }, [mcpservers, fetchAllCapabilitiesStats]);
+
+  // 渲染服务器能力统计信息
+  const renderCapabilitiesStats = (server: Gateway) => {
+    const serverKey = `${server.tenant}-${server.name}`;
+    const stats = capabilitiesStats[serverKey];
+    
+    if (!stats) {
+      return (
+        <div className="flex items-center gap-2 text-xs text-default-400">
+          <LocalIcon icon="lucide:loader-2" className="animate-spin" />
+          <span>{t('common.loading')}</span>
+        </div>
+      );
+    }
+
+    const getSyncStatusIcon = (status: string) => {
+      switch (status) {
+        case 'success': return 'lucide:check-circle';
+        case 'error': return 'lucide:alert-circle';
+        case 'syncing': return 'lucide:loader-2';
+        default: return 'lucide:help-circle';
+      }
+    };
+
+    const getSyncStatusColor = (status: string) => {
+      switch (status) {
+        case 'success': return 'text-success-500';
+        case 'error': return 'text-danger-500';
+        case 'syncing': return 'text-warning-500';
+        default: return 'text-default-400';
+      }
+    };
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1">
+            <LocalIcon icon="lucide:brain" className="text-primary-500" />
+            <span className="text-default-600">{stats.toolsCount || 0}</span>
+            <span className="text-default-400">/</span>
+            <span className="text-success-600">{stats.enabledToolsCount || 0}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <LocalIcon icon="lucide:message-square" className="text-secondary-500" />
+            <span className="text-default-600">{stats.promptsCount || 0}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <LocalIcon icon="lucide:file" className="text-success-500" />
+            <span className="text-default-600">{stats.resourcesCount || 0}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 text-xs">
+          <LocalIcon 
+            icon={getSyncStatusIcon(stats.syncStatus)}
+            className={`${getSyncStatusColor(stats.syncStatus)} ${stats.syncStatus === 'syncing' ? 'animate-spin' : ''}`}
+          />
+          <span className="text-default-500">
+            {String(t(`capabilities.sync_status_${stats.syncStatus}`))}
+          </span>
+          {stats.lastSyncTime && (
+            <span className="text-default-400">
+              {new Date(stats.lastSyncTime).toLocaleString()}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto p-4 pb-10 h-[calc(100vh-5rem)] flex flex-col overflow-y-scroll scrollbar-hide">
       <div className="flex justify-between items-center mb-4">
@@ -608,6 +713,19 @@ export function GatewayManager() {
                         color="primary"
                         variant="light"
                         size="sm"
+                        onPress={() => {
+                          navigate(`/gateway/capabilities/${encodeURIComponent(server.tenant || 'default')}/${encodeURIComponent(server.name)}`);
+                        }}
+                        aria-label={t('capabilities.view_capabilities')}
+                        isDisabled={isOpen || isCreateOpen || isImportOpen}
+                      >
+                        <LocalIcon icon="lucide:brain" className="text-lg" />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        color="primary"
+                        variant="light"
+                        size="sm"
                         onPress={() => handleEdit(server)}
                         aria-label={t('gateway.edit')}
                         isDisabled={isOpen || isCreateOpen || isImportOpen}
@@ -653,6 +771,15 @@ export function GatewayManager() {
 
                   {server && (
                     <div className="space-y-3">
+                      {/* 服务器能力统计信息 */}
+                      <div className="border-t pt-3">
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <LocalIcon icon="lucide:brain" className="text-primary-500" />
+                          {t('capabilities.server_capabilities')}
+                        </h4>
+                        {renderCapabilitiesStats(server)}
+                      </div>
+                      
                       {(server.servers || []).map((serverConfig) => {
                         const sc = serverConfig as ServerConfig;
                         return (
@@ -1108,6 +1235,18 @@ export function GatewayManager() {
                         color="primary"
                         variant="light"
                         size="sm"
+                        onPress={() => {
+                          navigate(`/gateway/capabilities/${encodeURIComponent(server.tenant || 'default')}/${encodeURIComponent(server.name)}`);
+                        }}
+                        aria-label={t('capabilities.view_capabilities')}
+                      >
+                        <LocalIcon icon="lucide:brain" className="text-lg" />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        color="primary"
+                        variant="light"
+                        size="sm"
                         onPress={() => handleEdit(server)}
                         aria-label={t('gateway.edit')}
                       >
@@ -1498,6 +1637,7 @@ export function GatewayManager() {
           )}
         </ModalContent>
       </Modal>
+
     </div>
   );
 }

@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/amoylab/unla/internal/common/config"
+	"github.com/amoylab/unla/pkg/mcp"
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
 )
 
 type MCPServer struct {
@@ -359,4 +361,115 @@ func FromPromptResponseContent(cfg config.PromptResponseContent) PromptResponseC
 		Type: cfg.Type,
 		Text: cfg.Text,
 	}
+}
+
+// FromMCPGoTool converts mcpgo.Tool to mcp.MCPTool
+func FromMCPGoTool(tool mcpgo.Tool) mcp.MCPTool {
+	// Convert input schema
+	inputSchema := mcp.ToolInputSchema{
+		Type:       tool.InputSchema.Type,
+		Properties: tool.InputSchema.Properties,
+		Required:   tool.InputSchema.Required,
+		Title:      tool.Name,
+	}
+
+
+	return mcp.MCPTool{
+		Name:        tool.Name,
+		Description: tool.Description,
+		InputSchema: inputSchema,
+	}
+}
+
+// FromMCPGoPrompt converts mcpgo.Prompt to mcp.MCPPrompt
+func FromMCPGoPrompt(prompt mcpgo.Prompt) mcp.MCPPrompt {
+	// Convert arguments
+	arguments := make([]mcp.PromptArgumentSchema, len(prompt.Arguments))
+	for i, arg := range prompt.Arguments {
+		arguments[i] = mcp.PromptArgumentSchema{
+			Name:        arg.Name,
+			Description: arg.Description,
+			Required:    arg.Required,
+		}
+	}
+
+	return mcp.MCPPrompt{
+		Name:        prompt.Name,
+		Description: prompt.Description,
+		Arguments:   arguments,
+	}
+}
+
+// FromMCPGoResource converts mcpgo.Resource to mcp.MCPResource
+func FromMCPGoResource(resource mcpgo.Resource) mcp.MCPResource {
+	return mcp.MCPResource{
+		Uri:         resource.URI,
+		Name:        resource.Name,
+		Description: resource.Description,
+		MimeType:    resource.MIMEType,
+	}
+}
+
+// FromMCPGoResourceTemplate converts mcpgo.ResourceTemplate to mcp.MCPResourceTemplate
+func FromMCPGoResourceTemplate(template mcpgo.ResourceTemplate) mcp.MCPResourceTemplate {
+	// Extract URI template string
+	uriTemplateString := ""
+	if template.URITemplate != nil {
+		uriTemplateString = template.URITemplate.Raw()
+	}
+
+	return mcp.MCPResourceTemplate{
+		UriTemplate: uriTemplateString,
+		Name:        template.Name,
+		Description: template.Description,
+		MimeType:    template.MIMEType,
+	}
+}
+
+// FromMCPGoTools converts slice of mcpgo.Tool to slice of mcp.MCPTool
+func FromMCPGoTools(tools []mcpgo.Tool) []mcp.MCPTool {
+	if tools == nil {
+		return nil
+	}
+	result := make([]mcp.MCPTool, len(tools))
+	for i, tool := range tools {
+		result[i] = FromMCPGoTool(tool)
+	}
+	return result
+}
+
+// FromMCPGoPrompts converts slice of mcpgo.Prompt to slice of mcp.MCPPrompt
+func FromMCPGoPrompts(prompts []mcpgo.Prompt) []mcp.MCPPrompt {
+	if prompts == nil {
+		return nil
+	}
+	result := make([]mcp.MCPPrompt, len(prompts))
+	for i, prompt := range prompts {
+		result[i] = FromMCPGoPrompt(prompt)
+	}
+	return result
+}
+
+// FromMCPGoResources converts slice of mcpgo.Resource to slice of mcp.MCPResource
+func FromMCPGoResources(resources []mcpgo.Resource) []mcp.MCPResource {
+	if resources == nil {
+		return nil
+	}
+	result := make([]mcp.MCPResource, len(resources))
+	for i, resource := range resources {
+		result[i] = FromMCPGoResource(resource)
+	}
+	return result
+}
+
+// FromMCPGoResourceTemplates converts slice of mcpgo.ResourceTemplate to slice of mcp.MCPResourceTemplate
+func FromMCPGoResourceTemplates(templates []mcpgo.ResourceTemplate) []mcp.MCPResourceTemplate {
+	if templates == nil {
+		return nil
+	}
+	result := make([]mcp.MCPResourceTemplate, len(templates))
+	for i, template := range templates {
+		result[i] = FromMCPGoResourceTemplate(template)
+	}
+	return result
 }

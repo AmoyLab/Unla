@@ -48,6 +48,141 @@ other = "资源未找到"
 [ErrorPrefixConflict]
 other = "前缀与已存在的前缀冲突"
 
+# 错误类别
+[error.category.validation]
+other = "验证错误"
+
+[error.category.authentication]
+other = "身份验证错误"
+
+[error.category.authorization]
+other = "权限错误"
+
+[error.category.not_found]
+other = "资源未找到"
+
+[error.category.internal]
+other = "内部服务器错误"
+
+[error.category.mcp]
+other = "MCP服务器错误"
+
+[error.category.unknown]
+other = "未知错误"
+
+# 通用错误建议
+[error.suggestion.check_input]
+other = "请检查您的输入并重试"
+
+[error.suggestion.check_documentation]
+other = "请参考API文档"
+
+[error.suggestion.check_credentials]
+other = "请检查您的凭据"
+
+[error.suggestion.login_again]
+other = "请重新登录"
+
+[error.suggestion.contact_admin]
+other = "请联系管理员"
+
+[error.suggestion.check_permissions]
+other = "请检查您的权限"
+
+[error.suggestion.check_resource_id]
+other = "请验证资源ID"
+
+[error.suggestion.check_existence]
+other = "请检查资源是否存在"
+
+[error.suggestion.try_later]
+other = "请稍后重试"
+
+[error.suggestion.contact_support]
+other = "如果问题持续，请联系技术支持"
+
+[error.suggestion.check_mcp_config]
+other = "请检查MCP配置"
+
+[error.suggestion.check_server_status]
+other = "请检查服务器状态"
+
+[error.suggestion.generic]
+other = "请重试或联系技术支持"
+
+# 可执行步骤
+[error.step.validate_input.title]
+other = "验证输入"
+
+[error.step.validate_input.description]
+other = "检查并更正提供的输入数据"
+
+[error.step.check_format.title]
+other = "检查格式"
+
+[error.step.check_format.description]
+other = "确保数据格式符合预期模式"
+
+[error.step.login.title]
+other = "需要登录"
+
+[error.step.login.description]
+other = "请登录您的账户以继续"
+
+[error.step.refresh_token.title]
+other = "刷新令牌"
+
+[error.step.refresh_token.description]
+other = "您的会话已过期，请刷新身份验证令牌"
+
+[error.step.contact_admin.title]
+other = "联系管理员"
+
+[error.step.contact_admin.description]
+other = "您需要额外权限才能执行此操作"
+
+[error.step.verify_resource.title]
+other = "验证资源"
+
+[error.step.verify_resource.description]
+other = "检查资源是否存在且您有权访问"
+
+[error.step.check_spelling.title]
+other = "检查拼写"
+
+[error.step.check_spelling.description]
+other = "验证资源名称或ID拼写是否正确"
+
+[error.step.retry.title]
+other = "重试请求"
+
+[error.step.retry.description]
+other = "问题可能是暂时的，请重新尝试"
+
+[error.step.wait.title]
+other = "稍等片刻"
+
+[error.step.wait.description]
+other = "请稍等片刻后重试"
+
+[error.step.check_mcp_server.title]
+other = "检查MCP服务器"
+
+[error.step.check_mcp_server.description]
+other = "验证MCP服务器正在运行且可访问"
+
+[error.step.reload_config.title]
+other = "重新加载配置"
+
+[error.step.reload_config.description]
+other = "尝试重新加载服务器配置"
+
+[error.step.generic.title]
+other = "获取帮助"
+
+[error.step.generic.description]
+other = "联系技术支持以获取此问题的帮助"
+
 [ErrorNamespacePermissionError]
 other = "用户没有权限配置此命名空间"
 
@@ -274,6 +409,9 @@ other = "MCP服务状态更新成功"
 
 [SuccessMCPConfigVersions]
 other = "MCP配置版本获取成功"
+
+[SuccessMCPCapabilities]
+other = "MCP能力信息获取成功"
 
 # OpenAPI related success messages
 [SuccessOpenAPIImported]

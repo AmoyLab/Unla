@@ -104,6 +104,7 @@ const (
 	SuccessMCPServerInfo     = "SuccessMCPServerInfo"
 	SuccessMCPServerStatus   = "SuccessMCPServerStatus"
 	SuccessMCPConfigVersions = "SuccessMCPConfigVersions"
+	SuccessMCPCapabilities   = "SuccessMCPCapabilities"
 )
 
 // OpenAPI related success messages

@@ -6,6 +6,7 @@ import { LoginPage } from './pages/auth/login';
 import { LLMChatInterface } from './pages/chat/llm-chat-interface';
 import { ConfigVersionsPage } from './pages/gateway/config-versions';
 import { GatewayManager } from './pages/gateway/gateway-manager';
+import CapabilitiesPage from './pages/gateway/capabilities';
 import LLMSettings from './pages/llm/llm-settings';
 import { TenantManagement } from './pages/users/tenant-management';
 import { UserManagement } from './pages/users/user-management';
@@ -44,6 +45,7 @@ function MainLayout() {
         <Route path="/" element={<GatewayManager />} />
         <Route path="/chat" element={<LLMChatInterface />} />
         <Route path="/chat/:sessionId" element={<LLMChatInterface />} />
+        <Route path="/gateway/capabilities/:tenant/:serverName" element={<PrivateRoute><CapabilitiesPage /></PrivateRoute>} />
         <Route path="/gateway/*" element={<GatewayManager />} />
         <Route path="/gateway" element={<PrivateRoute><GatewayManager /></PrivateRoute>} />
         <Route path="/gateway/configs/:name/versions" element={<PrivateRoute><ConfigVersionsPage /></PrivateRoute>} />

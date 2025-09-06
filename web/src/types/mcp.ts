@@ -38,4 +38,115 @@ export interface MCPConfigVersion {
 
 export interface MCPConfigVersionListResponse {
   data: MCPConfigVersion[];
+}
+
+// MCP Capabilities types
+export const PromptSchema = z.object({
+  name: z.string(),
+  description: z.optional(z.string()),
+  arguments: z.optional(z.array(z.object({
+    name: z.string(),
+    description: z.optional(z.string()),
+    required: z.optional(z.boolean())
+  })))
+}).passthrough();
+
+export type Prompt = z.infer<typeof PromptSchema>;
+
+export const ResourceSchema = z.object({
+  uri: z.string(),
+  name: z.string(),
+  description: z.optional(z.string()),
+  mimeType: z.optional(z.string())
+}).passthrough();
+
+export type Resource = z.infer<typeof ResourceSchema>;
+
+export const ResourceTemplateSchema = z.object({
+  uriTemplate: z.string(),
+  name: z.string(),
+  description: z.optional(z.string()),
+  mimeType: z.optional(z.string())
+}).passthrough();
+
+export type ResourceTemplate = z.infer<typeof ResourceTemplateSchema>;
+
+export interface MCPCapabilities {
+  tools?: Tool[];
+  prompts?: Prompt[];
+  resources?: Resource[];
+  resourceTemplates?: ResourceTemplate[];
+}
+
+export const MCPCapabilitiesSchema = z.object({
+  tools: z.optional(z.array(ToolSchema)),
+  prompts: z.optional(z.array(PromptSchema)),
+  resources: z.optional(z.array(ResourceSchema)),
+  resourceTemplates: z.optional(z.array(ResourceTemplateSchema))
+});
+
+export type MCPCapabilitiesType = z.infer<typeof MCPCapabilitiesSchema>;
+
+export interface CapabilitiesViewerProps {
+  tenant: string;
+  serverName: string;
+  className?: string;
+}
+
+export type CapabilityType = 'tools' | 'prompts' | 'resources' | 'resourceTemplates';
+
+export interface CapabilityItem {
+  name: string;
+  description?: string;
+  type: CapabilityType;
+  [key: string]: unknown;
+}
+
+export interface CapabilitiesState {
+  loading: boolean;
+  error: string | null;
+  data: MCPCapabilities | null;
+  filteredData: MCPCapabilities | null;
+  searchTerm: string;
+  selectedType: CapabilityType | 'all';
+}
+
+// Tool with status information
+export interface ToolWithStatus extends Tool {
+  enabled: boolean;
+  status?: 'enabled' | 'disabled' | 'unknown';
+}
+
+// Enhanced MCP Capabilities with status
+export interface MCPCapabilitiesWithStatus extends MCPCapabilities {
+  tools?: ToolWithStatus[];
+}
+
+// Capabilities statistics
+export interface CapabilitiesStats {
+  toolsCount: number;
+  promptsCount: number;
+  resourcesCount: number;
+  resourceTemplatesCount: number;
+  enabledToolsCount: number;
+  syncStatus: 'syncing' | 'success' | 'error' | 'unknown';
+  lastSyncTime?: string;
+}
+
+// Enhanced CapabilitiesViewer props
+export interface EnhancedCapabilitiesViewerProps extends CapabilitiesViewerProps {
+  onToolStatusChange?: (toolName: string, enabled: boolean) => void;
+  onBatchToolStatusChange?: (updates: Array<{toolName: string; enabled: boolean}>) => void;
+  enableToolManagement?: boolean;
+}
+
+// Tool status update request
+export interface ToolStatusUpdate {
+  toolName: string;
+  enabled: boolean;
+}
+
+// Batch tool status update request
+export interface BatchToolStatusUpdate {
+  updates: ToolStatusUpdate[];
 } 

@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/ifuryst/lol"
@@ -21,9 +22,11 @@ type (
 
 	// State contains all the read-only shared state
 	State struct {
-		rawConfigs []*config.MCPConfig
-		runtime    map[uriPrefix]runtimeUnit
-		metrics    metrics
+		rawConfigs   []*config.MCPConfig
+		runtime      map[uriPrefix]runtimeUnit
+		metrics      metrics
+		capabilities atomic.Pointer[map[capabilitiesKey]*CapabilitiesEntry]
+		version      atomic.Int64
 	}
 
 	runtimeUnit struct {

@@ -224,6 +224,10 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 			mcpGroup.PUT("/configs", mcpHandler.HandleMCPServerUpdate)
 			mcpGroup.DELETE("/configs/:tenant/:name", mcpHandler.HandleMCPServerDelete)
 			mcpGroup.POST("/configs/sync", mcpHandler.HandleMCPServerSync)
+			
+			// Capabilities endpoint
+			mcpGroup.GET("/capabilities/:tenant/:name", mcpHandler.HandleGetCapabilities)
+			mcpGroup.GET("/capabilities/:tenant/:name/stats", mcpHandler.HandleGetCapabilitiesStats)
 		}
 
 		// OpenAPI routes

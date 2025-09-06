@@ -1,6 +1,10 @@
 package state
 
 import (
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/core/mcpproxy"
@@ -146,4 +150,123 @@ func (s *State) GetPromptSchemas(prefix string) []mcp.PromptSchema {
 		return nil
 	}
 	return runtime.promptSchemas
+}
+
+
+// GetCapabilities retrieves capabilities info for a tenant and server in a thread-safe manner
+func (s *State) GetCapabilities(tenant, serverName string) *mcp.CapabilitiesInfo {
+	key := makeCapabilitiesKey(tenant, serverName)
+	capabilityMap := s.capabilities.Load()
+	
+	if entry, exists := (*capabilityMap)[key]; exists {
+		// Check if entry has expired
+		if time.Now().Before(entry.ExpiresAt) {
+			// Update access count atomically
+			atomic.AddInt64(&entry.AccessCount, 1)
+			return entry.Info
+		}
+	}
+	
+	return nil
+}
+
+// GetCapabilitiesWithDetails retrieves capabilities entry with all metadata
+func (s *State) GetCapabilitiesWithDetails(tenant, serverName string) *CapabilitiesEntry {
+	key := makeCapabilitiesKey(tenant, serverName)
+	capabilityMap := s.capabilities.Load()
+	
+	if entry, exists := (*capabilityMap)[key]; exists {
+		// Check if entry has expired
+		if time.Now().Before(entry.ExpiresAt) {
+			// Update access count atomically
+			atomic.AddInt64(&entry.AccessCount, 1)
+			return entry
+		}
+	}
+	
+	return nil
+}
+
+// GetAllCapabilities returns all non-expired capabilities for a tenant
+func (s *State) GetAllCapabilities(tenant string) map[string]*mcp.CapabilitiesInfo {
+	capabilityMap := s.capabilities.Load()
+	result := make(map[string]*mcp.CapabilitiesInfo)
+	now := time.Now()
+	
+	for key, entry := range *capabilityMap {
+		keyStr := key.String()
+		// Check if this entry belongs to the specified tenant
+		if len(keyStr) > len(tenant)+1 && keyStr[:len(tenant)+1] == tenant+":" {
+			// Check if entry has expired
+			if now.Before(entry.ExpiresAt) {
+				serverName := keyStr[len(tenant)+1:]
+				result[serverName] = entry.Info
+				// Update access count atomically
+				atomic.AddInt64(&entry.AccessCount, 1)
+			}
+		}
+	}
+	
+	return result
+}
+
+// GetCapabilitiesCount returns the total number of cached capabilities entries
+func (s *State) GetCapabilitiesCount() int {
+	capabilityMap := s.capabilities.Load()
+	return len(*capabilityMap)
+}
+
+// GetCurrentVersion returns the current version of the capabilities state
+func (s *State) GetCurrentVersion() int64 {
+	return s.version.Load()
+}
+
+// GetCapabilitiesVersion returns the version of a specific capabilities entry
+func (s *State) GetCapabilitiesVersion(tenant, serverName string) (int64, bool) {
+	entry := s.GetCapabilitiesWithDetails(tenant, serverName)
+	if entry != nil {
+		return entry.Version, true
+	}
+	return 0, false
+}
+
+// GetCapabilitiesStats returns statistics about cached capabilities
+func (s *State) GetCapabilitiesStats() map[string]interface{} {
+	capabilityMap := s.capabilities.Load()
+	now := time.Now()
+	
+	stats := map[string]interface{}{
+		"totalEntries":   len(*capabilityMap),
+		"expiredEntries": 0,
+		"validEntries":   0,
+		"totalTools":     0,
+		"totalPrompts":   0,
+		"totalResources": 0,
+		"tenants":        make(map[string]int),
+	}
+	
+	tenantCount := make(map[string]int)
+	
+	for key, entry := range *capabilityMap {
+		keyStr := key.String()
+		// Extract tenant from key
+		if colonPos := strings.Index(keyStr, ":"); colonPos > 0 {
+			tenant := keyStr[:colonPos]
+			tenantCount[tenant]++
+		}
+		
+		if now.After(entry.ExpiresAt) {
+			stats["expiredEntries"] = stats["expiredEntries"].(int) + 1
+		} else {
+			stats["validEntries"] = stats["validEntries"].(int) + 1
+			if entry.Info != nil {
+				stats["totalTools"] = stats["totalTools"].(int) + len(entry.Info.Tools)
+				stats["totalPrompts"] = stats["totalPrompts"].(int) + len(entry.Info.Prompts)
+				stats["totalResources"] = stats["totalResources"].(int) + len(entry.Info.Resources)
+			}
+		}
+	}
+	
+	stats["tenants"] = tenantCount
+	return stats
 }
