@@ -28,8 +28,8 @@ func NewPostgres(cfg *config.DatabaseConfig) (Database, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Add SystemPrompt to migrations
-	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &Tenant{}, &UserTenant{}, &SystemPrompt{}); err != nil {
+	// Add SystemPrompt and MCPToolStatus to migrations
+	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &Tenant{}, &UserTenant{}, &SystemPrompt{}, &MCPToolStatus{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -312,4 +312,55 @@ func (db *Postgres) SaveSystemPrompt(ctx context.Context, userID uint, prompt st
 	sp.Prompt = prompt
 	sp.UpdatedAt = now
 	return db.db.WithContext(ctx).Save(&sp).Error
+}
+
+// GetToolStatus gets the status of a specific tool
+func (db *Postgres) GetToolStatus(ctx context.Context, tenant, server, toolName string) (*MCPToolStatus, error) {
+	var status MCPToolStatus
+	err := db.db.WithContext(ctx).
+		Where("tenant = ? AND server = ? AND tool_name = ?", tenant, server, toolName).
+		First(&status).Error
+	if err != nil {
+		return nil, err
+	}
+	return &status, nil
+}
+
+// SetToolStatus sets the enabled/disabled status of a tool
+func (db *Postgres) SetToolStatus(ctx context.Context, tenant, server, toolName string, enabled bool) error {
+	var status MCPToolStatus
+	err := db.db.WithContext(ctx).
+		Where("tenant = ? AND server = ? AND tool_name = ?", tenant, server, toolName).
+		First(&status).Error
+	
+	now := time.Now()
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Create new record
+			status = MCPToolStatus{
+				Tenant:    tenant,
+				Server:    server,
+				ToolName:  toolName,
+				Enabled:   enabled,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+			return db.db.WithContext(ctx).Create(&status).Error
+		}
+		return err
+	}
+	
+	// Update existing record
+	status.Enabled = enabled
+	status.UpdatedAt = now
+	return db.db.WithContext(ctx).Save(&status).Error
+}
+
+// GetToolStatuses gets all tool statuses for a specific server
+func (db *Postgres) GetToolStatuses(ctx context.Context, tenant, server string) ([]*MCPToolStatus, error) {
+	var statuses []*MCPToolStatus
+	err := db.db.WithContext(ctx).
+		Where("tenant = ? AND server = ?", tenant, server).
+		Find(&statuses).Error
+	return statuses, err
 }

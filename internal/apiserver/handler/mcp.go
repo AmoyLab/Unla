@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/amoylab/unla/internal/apiserver/database"
 	"github.com/amoylab/unla/internal/auth/jwt"
 	"github.com/amoylab/unla/internal/common/config"
@@ -21,15 +20,17 @@ import (
 	"github.com/amoylab/unla/internal/mcp/storage/notifier"
 	"github.com/amoylab/unla/internal/template"
 	"github.com/amoylab/unla/pkg/mcp"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
+	"gorm.io/gorm"
 )
 
 type MCP struct {
-	db               database.Database
-	store            storage.Store
-	notifier         notifier.Notifier
-	logger           *zap.Logger
+	db                database.Database
+	store             storage.Store
+	notifier          notifier.Notifier
+	logger            *zap.Logger
 	capabilitiesCache sync.Map // key: tenant:name, value: *cachedCapabilities
 }
 
@@ -55,52 +56,52 @@ type CapabilitiesStatsResponse struct {
 
 // ServerStatsInfo represents server-level statistics
 type ServerStatsInfo struct {
-	Tenant      string    `json:"tenant"`
-	ServerName  string    `json:"serverName"`
-	LastSyncAt  time.Time `json:"lastSyncAt"`
-	Status      string    `json:"status"`
-	Version     string    `json:"version,omitempty"`
+	Tenant     string    `json:"tenant"`
+	ServerName string    `json:"serverName"`
+	LastSyncAt time.Time `json:"lastSyncAt"`
+	Status     string    `json:"status"`
+	Version    string    `json:"version,omitempty"`
 }
 
 // ToolsStatsInfo represents tools statistics
 type ToolsStatsInfo struct {
-	Total       int                    `json:"total"`
-	Enabled     int                    `json:"enabled"`
-	Disabled    int                    `json:"disabled"`
-	EnabledRate float64               `json:"enabledRate"`
-	ByCategory  map[string]int        `json:"byCategory,omitempty"`
-	Usage       ToolUsageStatsInfo    `json:"usage,omitempty"`
+	Total       int                `json:"total"`
+	Enabled     int                `json:"enabled"`
+	Disabled    int                `json:"disabled"`
+	EnabledRate float64            `json:"enabledRate"`
+	ByCategory  map[string]int     `json:"byCategory,omitempty"`
+	Usage       ToolUsageStatsInfo `json:"usage,omitempty"`
 }
 
 // PromptsStatsInfo represents prompts statistics
 type PromptsStatsInfo struct {
-	Total      int            `json:"total"`
-	WithArgs   int            `json:"withArgs"`
-	WithoutArgs int           `json:"withoutArgs"`
-	ByCategory map[string]int `json:"byCategory,omitempty"`
+	Total       int            `json:"total"`
+	WithArgs    int            `json:"withArgs"`
+	WithoutArgs int            `json:"withoutArgs"`
+	ByCategory  map[string]int `json:"byCategory,omitempty"`
 }
 
 // ResourcesStatsInfo represents resources statistics
 type ResourcesStatsInfo struct {
-	Total        int            `json:"total"`
-	Templates    int            `json:"templates"`
-	Static       int            `json:"static"`
-	ByMimeType   map[string]int `json:"byMimeType,omitempty"`
+	Total      int            `json:"total"`
+	Templates  int            `json:"templates"`
+	Static     int            `json:"static"`
+	ByMimeType map[string]int `json:"byMimeType,omitempty"`
 }
 
 // ToolUsageStatsInfo represents tool usage statistics
 type ToolUsageStatsInfo struct {
-	TotalCalls    int64   `json:"totalCalls"`
-	SuccessRate   float64 `json:"successRate"`
-	AvgExecTime   float64 `json:"avgExecTime"`
-	LastUsedAt    *time.Time `json:"lastUsedAt,omitempty"`
+	TotalCalls  int64      `json:"totalCalls"`
+	SuccessRate float64    `json:"successRate"`
+	AvgExecTime float64    `json:"avgExecTime"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
 }
 
 // StatsOverallInfo represents overall statistics summary
 type StatsOverallInfo struct {
-	TotalCapabilities int            `json:"totalCapabilities"`
-	ActiveCapabilities int           `json:"activeCapabilities"`
-	Distribution      map[string]int `json:"distribution"`
+	TotalCapabilities  int            `json:"totalCapabilities"`
+	ActiveCapabilities int            `json:"activeCapabilities"`
+	Distribution       map[string]int `json:"distribution"`
 }
 
 func NewMCP(db database.Database, store storage.Store, ntf notifier.Notifier, logger *zap.Logger) *MCP {
@@ -1002,7 +1003,7 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 		wg.Add(1)
 		go func(serverCfg config.MCPServerConfig) {
 			defer wg.Done()
-			
+
 			// Create transport for this MCP server
 			transport, err := mcpproxy.NewTransport(serverCfg)
 			if err != nil {
@@ -1048,16 +1049,37 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 					errChan <- err
 					return
 				}
-				
-				// Convert to MCP tools
+
+				// Get all tool statuses for this server in one query
+				toolStatuses, err := h.db.GetToolStatuses(ctx, cfg.Tenant, cfg.Name)
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+					h.logger.Debug("failed to get tool statuses, using default enabled=true for all tools",
+						zap.String("tenant", cfg.Tenant),
+						zap.String("server", cfg.Name),
+						zap.Error(err))
+				}
+
+				// Create a map for quick lookup of tool statuses
+				statusMap := make(map[string]bool)
+				for _, status := range toolStatuses {
+					statusMap[status.ToolName] = status.Enabled
+				}
+
+				// Convert to MCP tools and apply database status
 				mcpTools := make([]mcp.MCPTool, len(tools))
 				for i, tool := range tools {
+					// Check if we have a saved status, otherwise default to enabled
+					enabled := true
+					if savedEnabled, exists := statusMap[tool.Name]; exists {
+						enabled = savedEnabled
+					}
+					
 					mcpTools[i] = mcp.MCPTool{
 						Name:        tool.Name,
 						Description: tool.Description,
 						InputSchema: tool.InputSchema,
 						Annotations: tool.Annotations,
-						Enabled:     true,
+						Enabled:     enabled,
 						LastSynced:  time.Now().UTC(),
 					}
 				}
@@ -1078,7 +1100,7 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 					errChan <- err
 					return
 				}
-				
+
 				// Convert to MCP prompts
 				mcpPrompts := make([]mcp.MCPPrompt, len(prompts))
 				for i, prompt := range prompts {
@@ -1120,9 +1142,9 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 			zap.Int("error_count", len(errors)),
 			zap.Int("tools_fetched", len(capabilities.Tools)),
 			zap.Int("prompts_fetched", len(capabilities.Prompts)))
-		
+
 		// If we didn't get any capabilities at all, return the first error
-		if len(capabilities.Tools) == 0 && len(capabilities.Prompts) == 0 && 
+		if len(capabilities.Tools) == 0 && len(capabilities.Prompts) == 0 &&
 			len(capabilities.Resources) == 0 && len(capabilities.ResourceTemplates) == 0 {
 			return nil, errors[0]
 		}
@@ -1153,7 +1175,7 @@ func (h *MCP) getCapabilitiesFromCache(ctx context.Context, cacheKey string, cfg
 	// Fetch fresh data
 	h.logger.Debug("fetching fresh capabilities",
 		zap.String("cache_key", cacheKey))
-	
+
 	capabilities, err := h.fetchCapabilities(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -1266,7 +1288,7 @@ func (h *MCP) calculateCapabilitiesStats(ctx context.Context, tenant, serverName
 		Tenant:     tenant,
 		ServerName: serverName,
 		Status:     "active", // Could be derived from proxy health
-		Version:    "1.0", // Default version
+		Version:    "1.0",    // Default version
 	}
 
 	// Get last sync time if available - use current time as placeholder
@@ -1412,4 +1434,100 @@ func (h *MCP) categorizeToolBySchema(tool mcp.MCPTool) string {
 	} else {
 		return "complex"
 	}
+}
+
+// HandleUpdateToolStatus handles PUT /api/mcp/capabilities/{tenant}/{name}/tools/{toolName}/status
+func (h *MCP) HandleUpdateToolStatus(c *gin.Context) {
+	tenant := c.Param("tenant")
+	if tenant == "" {
+		h.logger.Warn("tenant parameter required but missing")
+		i18n.RespondWithError(c, i18n.ErrorTenantRequired)
+		return
+	}
+
+	name := c.Param("name")
+	if name == "" {
+		h.logger.Warn("MCP server name required but missing")
+		i18n.RespondWithError(c, i18n.ErrorMCPServerNameRequired)
+		return
+	}
+
+	toolName := c.Param("toolName")
+	if toolName == "" {
+		h.logger.Warn("tool name required but missing")
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Tool name is required"))
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("failed to parse request body", zap.Error(err))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Invalid request body: "+err.Error()))
+		return
+	}
+
+	h.logger.Info("handling update tool status request",
+		zap.String("tenant", tenant),
+		zap.String("server_name", name),
+		zap.String("tool_name", toolName),
+		zap.Bool("enabled", req.Enabled))
+
+	// Get MCP server configuration to check permissions
+	cfg, err := h.store.Get(c.Request.Context(), tenant, name)
+	if err != nil {
+		h.logger.Error("MCP server not found",
+			zap.String("tenant", tenant),
+			zap.String("server_name", name),
+			zap.Error(err))
+		i18n.RespondWithError(c, i18n.ErrorMCPServerNotFound.WithParam("Name", name))
+		return
+	}
+
+	// Check tenant permission
+	_, err = h.checkTenantPermission(c, tenant, cfg)
+	if err != nil {
+		h.logger.Warn("tenant permission check failed",
+			zap.String("tenant", tenant),
+			zap.Error(err))
+		i18n.RespondWithError(c, err)
+		return
+	}
+
+	// Save tool status to database
+	err = h.db.SetToolStatus(c.Request.Context(), tenant, name, toolName, req.Enabled)
+	if err != nil {
+		h.logger.Error("failed to save tool status",
+			zap.String("tenant", tenant),
+			zap.String("server_name", name),
+			zap.String("tool_name", toolName),
+			zap.Bool("enabled", req.Enabled),
+			zap.Error(err))
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to save tool status: "+err.Error()))
+		return
+	}
+
+	// Clear capabilities cache to force refresh
+	cacheKey := tenant + ":" + name
+	h.clearCapabilitiesCache(cacheKey)
+	
+	h.logger.Info("tool status updated successfully",
+		zap.String("tenant", tenant),
+		zap.String("server_name", name),
+		zap.String("tool_name", toolName),
+		zap.Bool("enabled", req.Enabled))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Tool status updated successfully",
+		"data": gin.H{
+			"tenant":    tenant,
+			"server":    name,
+			"tool":      toolName,
+			"enabled":   req.Enabled,
+			"updated_at": time.Now(),
+		},
+	})
 }
