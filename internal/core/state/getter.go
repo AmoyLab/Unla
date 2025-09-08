@@ -2,7 +2,6 @@ package state
 
 import (
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/amoylab/unla/internal/common/cnst"
@@ -161,8 +160,7 @@ func (s *State) GetCapabilities(tenant, serverName string) *mcp.CapabilitiesInfo
 	if entry, exists := (*capabilityMap)[key]; exists {
 		// Check if entry has expired
 		if time.Now().Before(entry.ExpiresAt) {
-			// Update access count atomically
-			atomic.AddInt64(&entry.AccessCount, 1)
+			// Entry is valid
 			return entry.Info
 		}
 	}
@@ -178,8 +176,7 @@ func (s *State) GetCapabilitiesWithDetails(tenant, serverName string) *Capabilit
 	if entry, exists := (*capabilityMap)[key]; exists {
 		// Check if entry has expired
 		if time.Now().Before(entry.ExpiresAt) {
-			// Update access count atomically
-			atomic.AddInt64(&entry.AccessCount, 1)
+			// Entry is valid
 			return entry
 		}
 	}
@@ -201,8 +198,7 @@ func (s *State) GetAllCapabilities(tenant string) map[string]*mcp.CapabilitiesIn
 			if now.Before(entry.ExpiresAt) {
 				serverName := keyStr[len(tenant)+1:]
 				result[serverName] = entry.Info
-				// Update access count atomically
-				atomic.AddInt64(&entry.AccessCount, 1)
+				// Entry is valid
 			}
 		}
 	}
@@ -225,7 +221,7 @@ func (s *State) GetCurrentVersion() int64 {
 func (s *State) GetCapabilitiesVersion(tenant, serverName string) (int64, bool) {
 	entry := s.GetCapabilitiesWithDetails(tenant, serverName)
 	if entry != nil {
-		return entry.Version, true
+		return 0, true
 	}
 	return 0, false
 }
