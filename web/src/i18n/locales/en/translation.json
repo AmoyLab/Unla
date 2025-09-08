@@ -435,8 +435,7 @@
     "systemPromptPlaceholder": "Set a custom system prompt for the assistant (optional)",
     "editSystemPrompt": "Edit System Prompt",
     "authTokenPlaceholder": "Enter authentication token",
-    "authToken": "Authentication Token",
-    "test": "Test"
+    "authToken": "Authentication Token"
   },
   "users": {
     "title": "User Management",

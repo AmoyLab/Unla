@@ -77,9 +77,7 @@
     "sse_url": "SSE URL",
     "streamable_http_url": "Streamable HTTP URL",
     "total_items": "共 {{total}} 条",
-    "experimental": "实验性",
-    "enabled": "已启用",
-    "disabled": "已禁用"
+    "experimental": "实验性"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -438,8 +436,7 @@
     "systemPromptPlaceholder": "为助手设置自定义系统提示词（可选）",
     "editSystemPrompt": "编辑系统提示词",
     "authTokenPlaceholder": "请输入认证令牌",
-    "authToken": "认证令牌",
-    "test": "测试"
+    "authToken": "认证令牌"
   },
   "users": {
     "title": "用户管理",
