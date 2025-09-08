@@ -18,8 +18,8 @@ import {
   DropdownItem,
   Code,
   Divider,
-  Select,
-  SelectItem
+  Tabs,
+  Tab
 } from '@heroui/react';
 import React from 'react';
 import {useTranslation} from 'react-i18next';
@@ -1564,41 +1564,60 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
           </Card>
         )}
         
-        <Select
-          selectedKeys={[state.selectedType]}
-          onSelectionChange={(keys) => handleTypeSelection(Array.from(keys)[0] as React.Key)}
+        <Tabs
+          selectedKey={state.selectedType}
+          onSelectionChange={(key) => handleTypeSelection(key as React.Key)}
           size="sm"
-          className="w-48"
-          label={t('capabilities.type')}
+          classNames={{
+            tabList: "bg-default-100 p-1 rounded-lg"
+          }}
         >
-          <SelectItem key="all" textValue={t('common.all')}>
-            {t('common.all')}
-          </SelectItem>
-          <SelectItem key="tools" textValue={t('capabilities.tools')}>
-            <div className="flex items-center gap-1">
-              <LocalIcon icon="lucide:wrench" className="text-sm" />
-              <span>{t('capabilities.tools')}</span>
-            </div>
-          </SelectItem>
-          <SelectItem key="prompts" textValue={t('capabilities.prompts')}>
-            <div className="flex items-center gap-1">
-              <LocalIcon icon="lucide:message-square" className="text-sm" />
-              <span>{t('capabilities.prompts')}</span>
-            </div>
-          </SelectItem>
-          <SelectItem key="resources" textValue={t('capabilities.resources')}>
-            <div className="flex items-center gap-1">
-              <LocalIcon icon="lucide:file-text" className="text-sm" />
-              <span>{t('capabilities.resources')}</span>
-            </div>
-          </SelectItem>
-          <SelectItem key="resourceTemplates" textValue={t('capabilities.resource_templates')}>
-            <div className="flex items-center gap-1">
-              <LocalIcon icon="lucide:file-code" className="text-sm" />
-              <span>{t('capabilities.resource_templates')}</span>
-            </div>
-          </SelectItem>
-        </Select>
+          <Tab
+            key="all"
+            title={
+              <div className="flex items-center gap-1">
+                <LocalIcon icon="lucide:folder-open" className="text-sm" />
+                <span>{t('common.all')}</span>
+              </div>
+            }
+          />
+          <Tab
+            key="tools"
+            title={
+              <div className="flex items-center gap-1">
+                <LocalIcon icon="lucide:wrench" className="text-sm" />
+                <span>{t('capabilities.tools')}</span>
+              </div>
+            }
+          />
+          <Tab
+            key="prompts"
+            title={
+              <div className="flex items-center gap-1">
+                <LocalIcon icon="lucide:message-square" className="text-sm" />
+                <span>{t('capabilities.prompts')}</span>
+              </div>
+            }
+          />
+          <Tab
+            key="resources"
+            title={
+              <div className="flex items-center gap-1">
+                <LocalIcon icon="lucide:file-text" className="text-sm" />
+                <span>{t('capabilities.resources')}</span>
+              </div>
+            }
+          />
+          <Tab
+            key="resourceTemplates"
+            title={
+              <div className="flex items-center gap-1">
+                <LocalIcon icon="lucide:file-code" className="text-sm" />
+                <span>{t('capabilities.resource_templates')}</span>
+              </div>
+            }
+          />
+        </Tabs>
       </div>
 
       {/* 内容区域 */}
