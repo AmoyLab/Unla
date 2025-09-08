@@ -26,7 +26,6 @@ type (
 		runtime      map[uriPrefix]runtimeUnit
 		metrics      metrics
 		capabilities atomic.Pointer[map[capabilitiesKey]*CapabilitiesEntry]
-		version      atomic.Int64
 	}
 
 	runtimeUnit struct {
@@ -54,11 +53,15 @@ type (
 )
 
 func NewState() *State {
-	return &State{
+	s := &State{
 		rawConfigs: make([]*config.MCPConfig, 0),
 		runtime:    make(map[uriPrefix]runtimeUnit),
 		metrics:    metrics{},
 	}
+	// Initialize capabilities map
+	initialCapabilities := make(map[capabilitiesKey]*CapabilitiesEntry)
+	s.capabilities.Store(&initialCapabilities)
+	return s
 }
 
 // BuildStateFromConfig creates a new State from the given configuration
