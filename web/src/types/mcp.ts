@@ -15,12 +15,6 @@ export const ToolSchema = z
 
 export type Tool = z.infer<typeof ToolSchema>;
 
-export const ListToolsResultSchema = z.object({
-  tools: z.array(ToolSchema),
-});
-
-export type ListToolsResult = z.infer<typeof ListToolsResultSchema>;
-
 export interface MCPConfigVersion {
   version: number;
   created_by: string;
@@ -76,21 +70,6 @@ export interface MCPCapabilities {
   prompts?: Prompt[];
   resources?: Resource[];
   resourceTemplates?: ResourceTemplate[];
-}
-
-export const MCPCapabilitiesSchema = z.object({
-  tools: z.optional(z.array(ToolSchema)),
-  prompts: z.optional(z.array(PromptSchema)),
-  resources: z.optional(z.array(ResourceSchema)),
-  resourceTemplates: z.optional(z.array(ResourceTemplateSchema))
-});
-
-export type MCPCapabilitiesType = z.infer<typeof MCPCapabilitiesSchema>;
-
-export interface CapabilitiesViewerProps {
-  tenant: string;
-  serverName: string;
-  className?: string;
 }
 
 export type CapabilityType = 'tools' | 'prompts' | 'resources' | 'resourceTemplates';
