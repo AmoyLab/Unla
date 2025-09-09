@@ -313,4 +313,3 @@ func (db *Postgres) SaveSystemPrompt(ctx context.Context, userID uint, prompt st
 	sp.UpdatedAt = now
 	return db.db.WithContext(ctx).Save(&sp).Error
 }
-

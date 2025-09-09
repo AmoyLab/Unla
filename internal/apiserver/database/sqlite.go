@@ -312,4 +312,3 @@ func (db *SQLite) SaveSystemPrompt(ctx context.Context, userID uint, prompt stri
 	sp.UpdatedAt = now
 	return db.db.WithContext(ctx).Save(&sp).Error
 }
-

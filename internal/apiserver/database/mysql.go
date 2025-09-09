@@ -305,4 +305,3 @@ func (db *MySQL) SaveSystemPrompt(ctx context.Context, userID uint, prompt strin
 	sp.UpdatedAt = now
 	return db.db.WithContext(ctx).Save(&sp).Error
 }
-

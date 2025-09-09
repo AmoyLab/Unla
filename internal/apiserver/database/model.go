@@ -70,4 +70,3 @@ type SystemPrompt struct {
 	Prompt    string    `json:"prompt" gorm:"type:text;not null"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
-
