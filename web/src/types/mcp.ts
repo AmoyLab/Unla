@@ -15,6 +15,12 @@ export const ToolSchema = z
 
 export type Tool = z.infer<typeof ToolSchema>;
 
+export const ListToolsResultSchema = z.object({
+  tools: z.array(ToolSchema),
+});
+
+export type ListToolsResult = z.infer<typeof ListToolsResultSchema>;
+
 export interface MCPConfigVersion {
   version: number;
   created_by: string;
@@ -89,5 +95,3 @@ export interface CapabilitiesState {
   searchTerm: string;
   selectedType: CapabilityType | 'all';
 }
-
- 
