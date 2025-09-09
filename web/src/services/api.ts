@@ -622,28 +622,5 @@ export const getMCPServerCapabilitiesStats = async (tenant: string, serverName: 
 };
 
 // Tool Status Management APIs
-export const updateToolStatus = async (tenant: string, serverName: string, toolName: string, enabled: boolean) => {
-  try {
-    const response = await api.put(`/mcp/capabilities/${tenant}/${serverName}/tools/${toolName}/status`, {
-      enabled
-    });
-    return response.data.data || response.data;
-  } catch (error) {
-    handleApiError(error, 'errors.update_tool_status');
-    throw error;
-  }
-};
-
-export const batchUpdateToolStatus = async (tenant: string, serverName: string, updates: Array<{toolName: string; enabled: boolean}>) => {
-  try {
-    const response = await api.put(`/mcp/capabilities/${tenant}/${serverName}/tools/status`, {
-      updates
-    });
-    return response.data.data || response.data;
-  } catch (error) {
-    handleApiError(error, 'errors.batch_update_tool_status');
-    throw error;
-  }
-};
 
 export default api;

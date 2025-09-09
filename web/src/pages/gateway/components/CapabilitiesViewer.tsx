@@ -10,7 +10,6 @@ import {
   ModalFooter,
   ModalHeader,
   Spinner,
-  Switch,
   useDisclosure,
   Dropdown,
   DropdownTrigger,
@@ -31,19 +30,16 @@ import YAML from 'js-yaml';
 import 'highlight.js/styles/github.css';
 
 import LocalIcon from '@/components/LocalIcon';
-import {getMCPServerCapabilities, updateToolStatus, batchUpdateToolStatus} from '@/services/api';
+import {getMCPServerCapabilities} from '@/services/api';
 import type {
   CapabilitiesState,
   CapabilityItem,
   CapabilityType,
-  EnhancedCapabilitiesViewerProps,
   MCPCapabilities,
   Tool,
-  ToolWithStatus,
   Prompt,
   Resource,
-  ResourceTemplate,
-  ToolStatusUpdate
+  ResourceTemplate
 } from '@/types/mcp';
 import {toast} from '@/utils/toast';
 
@@ -681,13 +677,16 @@ const HighlightText: React.FC<HighlightTextProps> = ({
   );
 };
 
-const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
+interface CapabilitiesViewerProps {
+  tenant: string;
+  serverName: string;
+  className?: string;
+}
+
+const CapabilitiesViewer: React.FC<CapabilitiesViewerProps> = ({
   tenant,
   serverName,
-  className = '',
-  onToolStatusChange,
-  onBatchToolStatusChange,
-  enableToolManagement = false
+  className = ''
 }) => {
   const {t} = useTranslation();
   const {isOpen, onOpen, onClose} = useDisclosure();
@@ -707,7 +706,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
   // 高级搜索状态
   const [advancedSearch, setAdvancedSearch] = React.useState({
     enabled: false,
-    statusFilter: 'all' as 'all' | 'enabled' | 'disabled',
     paramCountFilter: 'all' as 'all' | 'none' | 'few' | 'many',
     mimeTypeFilter: '',
     serverNameFilter: '',
@@ -716,11 +714,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
     caseSensitive: false
   });
 
-  // 工具状态管理
-  const [toolStates, setToolStates] = React.useState<{[toolName: string]: boolean}>({});
-  const [isUpdatingTool, setIsUpdatingTool] = React.useState<{[toolName: string]: boolean}>({});
-  const [selectedTools, setSelectedTools] = React.useState<Set<string>>(new Set());
-  const [isBatchUpdating, setIsBatchUpdating] = React.useState(false);
   
   // 参数展开状态管理
   const [expandedParams, setExpandedParams] = React.useState<Set<string>>(new Set());
@@ -730,16 +723,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
     try {
       setState(prev => ({...prev, loading: true, error: null}));
       const data = await getMCPServerCapabilities(tenant, serverName);
-      
-      // 初始化工具状态
-      if (data.tools && enableToolManagement) {
-        const initialToolStates: {[toolName: string]: boolean} = {};
-        data.tools.forEach((tool: Tool) => {
-          // 假设工具默认启用，实际应从API获取状态
-          initialToolStates[tool.name] = (tool as ToolWithStatus).enabled ?? true;
-        });
-        setToolStates(initialToolStates);
-      }
       
       setState(prev => ({
         ...prev,
@@ -756,7 +739,7 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
       }));
       toast.error(t('errors.fetch_mcp_capabilities'));
     }
-  }, [tenant, serverName, t, enableToolManagement]);
+  }, [tenant, serverName, t]);
 
   // 初始加载
   React.useEffect(() => {
@@ -796,12 +779,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
         // 高级筛选只在启用时应用
         if (!advancedFilters.enabled) return true;
         
-        // 状态筛选（仅适用于工具）
-        if (type === 'tools' && advancedFilters.statusFilter !== 'all') {
-          const toolEnabled = toolStates[(item as any).name] ?? true;
-          if (advancedFilters.statusFilter === 'enabled' && !toolEnabled) return false;
-          if (advancedFilters.statusFilter === 'disabled' && toolEnabled) return false;
-        }
         
         // 参数数量筛选
         if (advancedFilters.paramCountFilter !== 'all') {
@@ -854,7 +831,7 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
     filtered.resourceTemplates = filterArray(data.resourceTemplates, 'resourceTemplates') as ResourceTemplate[];
 
     return filtered;
-  }, [toolStates]);
+  }, []);
 
   // 搜索和类型筛选
   React.useEffect(() => {
@@ -882,91 +859,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
   };
 
 
-  // 处理单个工具状态切换
-  const handleToolStatusChange = React.useCallback(async (toolName: string, enabled: boolean) => {
-    if (!enableToolManagement) return;
-
-    setIsUpdatingTool(prev => ({...prev, [toolName]: true}));
-    
-    // 乐观更新
-    const previousState = toolStates[toolName];
-    setToolStates(prev => ({...prev, [toolName]: enabled}));
-
-    try {
-      await updateToolStatus(tenant, serverName, toolName, enabled);
-      
-      // 回调通知上层组件
-      if (onToolStatusChange) {
-        onToolStatusChange(toolName, enabled);
-      }
-      
-      toast.success(t('capabilities.tool_status_updated'));
-    } catch (error) {
-      // 错误回滚
-      setToolStates(prev => ({...prev, [toolName]: previousState}));
-      toast.error(t('errors.update_tool_status'));
-    } finally {
-      setIsUpdatingTool(prev => ({...prev, [toolName]: false}));
-    }
-  }, [tenant, serverName, toolStates, enableToolManagement, onToolStatusChange, t]);
-
-  // 处理批量工具状态切换
-  const handleBatchToolStatusChange = React.useCallback(async (updates: ToolStatusUpdate[]) => {
-    if (!enableToolManagement || isBatchUpdating) return;
-
-    setIsBatchUpdating(true);
-    
-    // 乐观更新
-    const previousStates = {...toolStates};
-    const newStates = {...toolStates};
-    updates.forEach(({toolName, enabled}) => {
-      newStates[toolName] = enabled;
-    });
-    setToolStates(newStates);
-
-    try {
-      await batchUpdateToolStatus(tenant, serverName, updates);
-      
-      // 回调通知上层组件
-      if (onBatchToolStatusChange) {
-        onBatchToolStatusChange(updates);
-      }
-      
-      toast.success(t('capabilities.batch_tool_status_updated'));
-    } catch (error) {
-      // 错误回滚
-      setToolStates(previousStates);
-      toast.error(t('errors.batch_update_tool_status'));
-    } finally {
-      setIsBatchUpdating(false);
-    }
-  }, [tenant, serverName, toolStates, enableToolManagement, isBatchUpdating, onBatchToolStatusChange, t]);
-
-  // 处理工具选择
-  const handleToolSelection = (toolName: string, selected: boolean) => {
-    setSelectedTools(prev => {
-      const newSet = new Set(prev);
-      if (selected) {
-        newSet.add(toolName);
-      } else {
-        newSet.delete(toolName);
-      }
-      return newSet;
-    });
-  };
-
-  // 处理全选
-  const handleSelectAllTools = () => {
-    if (!state.filteredData?.tools) return;
-    
-    const allToolNames = state.filteredData.tools.map(tool => tool.name);
-    setSelectedTools(new Set(allToolNames));
-  };
-
-  // 处理取消全选
-  const handleDeselectAllTools = () => {
-    setSelectedTools(new Set());
-  };
 
   // 切换参数展开状态
   const toggleParamExpansion = (itemName: string) => {
@@ -981,23 +873,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
     });
   };
 
-  // 处理批量启用
-  const handleBatchEnable = () => {
-    const updates = Array.from(selectedTools).map(toolName => ({
-      toolName,
-      enabled: true
-    }));
-    handleBatchToolStatusChange(updates);
-  };
-
-  // 处理批量禁用
-  const handleBatchDisable = () => {
-    const updates = Array.from(selectedTools).map(toolName => ({
-      toolName,
-      enabled: false
-    }));
-    handleBatchToolStatusChange(updates);
-  };
 
   // 渲染能力卡片
   const renderCapabilityCard = (item: CapabilityItem, type: CapabilityType) => {
@@ -1012,10 +887,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
                           color === 'success' ? 'text-success-600' :
                           color === 'warning' ? 'text-warning-600' : 'text-default-600';
 
-    const isTool = type === 'tools';
-    const isToolEnabled = isTool ? toolStates[item.name] ?? true : undefined;
-    const isToolUpdating = isTool ? isUpdatingTool[item.name] ?? false : false;
-    const isToolSelected = isTool ? selectedTools.has(item.name) : false;
 
     return (
       <Card 
@@ -1023,17 +894,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
         className={`w-full hover:shadow-md transition-shadow`}
       >
         <CardBody className="flex flex-row items-center gap-3 p-4">
-          {/* 工具选择复选框（仅工具管理模式） */}
-          {isTool && enableToolManagement && (
-            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="checkbox"
-                checked={isToolSelected}
-                onChange={(e) => handleToolSelection(item.name, e.target.checked)}
-                className="w-4 h-4 text-primary-600 rounded"
-              />
-            </div>
-          )}
           
           <div className="flex-shrink-0">
             <div className={`p-2 rounded-lg ${iconBgClass}`}>
@@ -1070,17 +930,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
                 >
                   {t(`capabilities.${type}`)}
                 </Chip>
-                {/* 工具状态标识 */}
-                {isTool && enableToolManagement && (
-                  <Chip
-                    size="sm"
-                    variant="flat"
-                    color={isToolEnabled ? 'success' : 'default'}
-                    className="flex-shrink-0"
-                  >
-                    {isToolEnabled ? t('common.enabled') : t('common.disabled')}
-                  </Chip>
-                )}
               </div>
             </div>
             {/* MCP 服务信息 */}
@@ -1108,7 +957,7 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
             )}
             
             {/* 工具入参信息 */}
-            {isTool && (() => {
+            {type === 'tools' && (() => {
               const tool = item as any;
               const properties = tool.inputSchema?.properties || {};
               const required = tool.inputSchema?.required || [];
@@ -1217,22 +1066,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
             })()}
           </div>
           
-          {/* 右侧操作区域 */}
-          <div className="flex-shrink-0 flex items-center gap-2">
-            {/* 工具状态切换开关 */}
-            {isTool && enableToolManagement && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Switch
-                  size="sm"
-                  isSelected={isToolEnabled}
-                  onValueChange={(enabled) => handleToolStatusChange(item.name, enabled)}
-                  isDisabled={isToolUpdating}
-                  aria-label={t('capabilities.toggle_tool_status', {name: item.name})}
-                />
-                {isToolUpdating && <Spinner size="sm" />}
-              </div>
-            )}
-          </div>
         </CardBody>
       </Card>
     );
@@ -1298,56 +1131,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
 
     return (
       <div className="space-y-4">
-        {/* 批量操作工具栏（仅工具类型且启用工具管理时显示） */}
-        {type === 'tools' && enableToolManagement && (
-          <div className="flex items-center justify-between p-4 bg-default-50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="flat"
-                onPress={handleSelectAllTools}
-                startContent={<LocalIcon icon="lucide:check-square" />}
-              >
-                {t('common.select_all')}
-              </Button>
-              <Button
-                size="sm"
-                variant="flat"
-                onPress={handleDeselectAllTools}
-                startContent={<LocalIcon icon="lucide:square" />}
-              >
-                {t('common.deselect_all')}
-              </Button>
-              <span className="text-sm text-default-500">
-                {t('capabilities.selected_tools', {count: selectedTools.size})}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                color="success"
-                variant="flat"
-                onPress={handleBatchEnable}
-                isDisabled={selectedTools.size === 0 || isBatchUpdating}
-                startContent={<LocalIcon icon="lucide:play" />}
-                isLoading={isBatchUpdating}
-              >
-                {t('capabilities.batch_enable')}
-              </Button>
-              <Button
-                size="sm"
-                color="danger"
-                variant="flat"
-                onPress={handleBatchDisable}
-                isDisabled={selectedTools.size === 0 || isBatchUpdating}
-                startContent={<LocalIcon icon="lucide:pause" />}
-                isLoading={isBatchUpdating}
-              >
-                {t('capabilities.batch_disable')}
-              </Button>
-            </div>
-          </div>
-        )}
         
         {/* 工具列表 */}
         <div className="flex flex-col gap-3">
@@ -1412,26 +1195,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
               </h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {/* 状态筛选（仅工具管理时显示） */}
-                {enableToolManagement && (
-                  <div>
-                    <label className="text-xs text-default-600 mb-1 block">
-                      {t('capabilities.status_filter')}
-                    </label>
-                    <select
-                      value={advancedSearch.statusFilter}
-                      onChange={(e) => setAdvancedSearch(prev => ({
-                        ...prev,
-                        statusFilter: e.target.value as 'all' | 'enabled' | 'disabled'
-                      }))}
-                      className="w-full px-3 py-2 text-sm border rounded-lg bg-default-50"
-                    >
-                      <option value="all">{t('common.all')}</option>
-                      <option value="enabled">{t('common.enabled')}</option>
-                      <option value="disabled">{t('common.disabled')}</option>
-                    </select>
-                  </div>
-                )}
                 
                 {/* 参数数量筛选 */}
                 <div>
@@ -1548,7 +1311,6 @@ const CapabilitiesViewer: React.FC<EnhancedCapabilitiesViewerProps> = ({
                   startContent={<LocalIcon icon="lucide:rotate-ccw" />}
                   onPress={() => setAdvancedSearch({
                     enabled: true,
-                    statusFilter: 'all',
                     paramCountFilter: 'all',
                     mimeTypeFilter: '',
                     serverNameFilter: '',

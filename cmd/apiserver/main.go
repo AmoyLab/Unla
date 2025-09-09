@@ -229,8 +229,6 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 			mcpGroup.GET("/capabilities/:tenant/:name", mcpHandler.HandleGetCapabilities)
 			mcpGroup.GET("/capabilities/:tenant/:name/stats", mcpHandler.HandleGetCapabilitiesStats)
 			
-			// Tool status management endpoints
-			mcpGroup.PUT("/capabilities/:tenant/:name/tools/:toolName/status", mcpHandler.HandleUpdateToolStatus)
 		}
 
 		// OpenAPI routes

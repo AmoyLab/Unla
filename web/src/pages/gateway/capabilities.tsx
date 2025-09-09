@@ -92,13 +92,6 @@ export default function CapabilitiesPage() {
         <CapabilitiesViewer
           tenant={tenant}
           serverName={serverName}
-          enableToolManagement={true}
-          onToolStatusChange={(toolName, enabled) => {
-            console.log(`Tool ${toolName} ${enabled ? 'enabled' : 'disabled'}`);
-          }}
-          onBatchToolStatusChange={(updates) => {
-            console.log(`Batch update:`, updates);
-          }}
         />
       </div>
     </div>

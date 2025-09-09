@@ -111,42 +111,4 @@ export interface CapabilitiesState {
   selectedType: CapabilityType | 'all';
 }
 
-// Tool with status information
-export interface ToolWithStatus extends Tool {
-  enabled: boolean;
-  status?: 'enabled' | 'disabled' | 'unknown';
-}
-
-// Enhanced MCP Capabilities with status
-export interface MCPCapabilitiesWithStatus extends MCPCapabilities {
-  tools?: ToolWithStatus[];
-}
-
-// Capabilities statistics
-export interface CapabilitiesStats {
-  toolsCount: number;
-  promptsCount: number;
-  resourcesCount: number;
-  resourceTemplatesCount: number;
-  enabledToolsCount: number;
-  syncStatus: 'syncing' | 'success' | 'error' | 'unknown';
-  lastSyncTime?: string;
-}
-
-// Enhanced CapabilitiesViewer props
-export interface EnhancedCapabilitiesViewerProps extends CapabilitiesViewerProps {
-  onToolStatusChange?: (toolName: string, enabled: boolean) => void;
-  onBatchToolStatusChange?: (updates: Array<{toolName: string; enabled: boolean}>) => void;
-  enableToolManagement?: boolean;
-}
-
-// Tool status update request
-export interface ToolStatusUpdate {
-  toolName: string;
-  enabled: boolean;
-}
-
-// Batch tool status update request
-export interface BatchToolStatusUpdate {
-  updates: ToolStatusUpdate[];
-} 
+ 
