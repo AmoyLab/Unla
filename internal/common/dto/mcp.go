@@ -360,4 +360,3 @@ func FromPromptResponseContent(cfg config.PromptResponseContent) PromptResponseC
 		Text: cfg.Text,
 	}
 }
-
