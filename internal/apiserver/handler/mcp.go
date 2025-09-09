@@ -26,10 +26,10 @@ import (
 )
 
 type MCP struct {
-	db               database.Database
-	store            storage.Store
-	notifier         notifier.Notifier
-	logger           *zap.Logger
+	db       database.Database
+	store    storage.Store
+	notifier notifier.Notifier
+	logger   *zap.Logger
 	capabilitiesCache sync.Map // key: tenant:name, value: *cachedCapabilities
 }
 
@@ -45,10 +45,10 @@ func (c *cachedCapabilities) isExpired() bool {
 
 func NewMCP(db database.Database, store storage.Store, ntf notifier.Notifier, logger *zap.Logger) *MCP {
 	return &MCP{
-		db:                db,
-		store:             store,
-		notifier:          ntf,
-		logger:            logger,
+		db:       db,
+		store:    store,
+		notifier: ntf,
+		logger:   logger,
 		capabilitiesCache: sync.Map{},
 	}
 }
