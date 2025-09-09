@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/amoylab/unla/internal/apiserver/database"
 	"github.com/amoylab/unla/internal/auth/jwt"
 	"github.com/amoylab/unla/internal/common/config"
@@ -20,16 +21,15 @@ import (
 	"github.com/amoylab/unla/internal/mcp/storage/notifier"
 	"github.com/amoylab/unla/internal/template"
 	"github.com/amoylab/unla/pkg/mcp"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
 type MCP struct {
-	db                database.Database
-	store             storage.Store
-	notifier          notifier.Notifier
-	logger            *zap.Logger
+	db               database.Database
+	store            storage.Store
+	notifier         notifier.Notifier
+	logger           *zap.Logger
 	capabilitiesCache sync.Map // key: tenant:name, value: *cachedCapabilities
 }
 
@@ -42,7 +42,6 @@ type cachedCapabilities struct {
 func (c *cachedCapabilities) isExpired() bool {
 	return time.Since(c.timestamp) > c.ttl
 }
-
 
 func NewMCP(db database.Database, store storage.Store, ntf notifier.Notifier, logger *zap.Logger) *MCP {
 	return &MCP{
@@ -367,6 +366,7 @@ func (h *MCP) HandleListMCPServers(c *gin.Context) {
 			zap.Int("server_count", len(servers)))
 	}
 
+	// TODO: temporary
 	results := make([]*dto.MCPServer, len(filteredServers))
 	for i, server := range filteredServers {
 		results[i] = &dto.MCPServer{
@@ -930,7 +930,7 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 		Resources:         make([]mcp.MCPResource, 0),
 		ResourceTemplates: make([]mcp.MCPResourceTemplate, 0),
 		LastSynced:        time.Now().UTC(),
-		ServerInfo:        mcp.ImplementationSchema{Name: "unknown", Version: "unknown"},
+		ServerInfo:        mcp.ImplementationSchema{},
 	}
 
 	var wg sync.WaitGroup
@@ -942,7 +942,7 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 		wg.Add(1)
 		go func(serverCfg config.MCPServerConfig) {
 			defer wg.Done()
-
+			
 			// Create transport for this MCP server
 			transport, err := mcpproxy.NewTransport(serverCfg)
 			if err != nil {
@@ -988,8 +988,8 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 					errChan <- err
 					return
 				}
-
-				// Convert to MCP tools with default enabled status
+				
+				// Convert to MCP tools
 				mcpTools := make([]mcp.MCPTool, len(tools))
 				for i, tool := range tools {
 					mcpTools[i] = mcp.MCPTool{
@@ -997,7 +997,7 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 						Description: tool.Description,
 						InputSchema: tool.InputSchema,
 						Annotations: tool.Annotations,
-						Enabled:     true, // Default to enabled since no database persistence
+						Enabled:     true,
 						LastSynced:  time.Now().UTC(),
 					}
 				}
@@ -1018,7 +1018,7 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 					errChan <- err
 					return
 				}
-
+				
 				// Convert to MCP prompts
 				mcpPrompts := make([]mcp.MCPPrompt, len(prompts))
 				for i, prompt := range prompts {
@@ -1066,9 +1066,9 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 			zap.Int("error_count", len(errors)),
 			zap.Int("tools_fetched", len(capabilities.Tools)),
 			zap.Int("prompts_fetched", len(capabilities.Prompts)))
-
+		
 		// If we didn't get any capabilities at all, return the first error
-		if len(capabilities.Tools) == 0 && len(capabilities.Prompts) == 0 &&
+		if len(capabilities.Tools) == 0 && len(capabilities.Prompts) == 0 && 
 			len(capabilities.Resources) == 0 && len(capabilities.ResourceTemplates) == 0 {
 			return nil, errors[0]
 		}
@@ -1099,7 +1099,7 @@ func (h *MCP) getCapabilitiesFromCache(ctx context.Context, cacheKey string, cfg
 	// Fetch fresh data
 	h.logger.Debug("fetching fresh capabilities",
 		zap.String("cache_key", cacheKey))
-
+	
 	capabilities, err := h.fetchCapabilities(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -1135,5 +1135,3 @@ func (h *MCP) clearCapabilitiesCache(key string) {
 		h.logger.Debug("cleared capabilities cache for key", zap.String("key", key))
 	}
 }
-
-
