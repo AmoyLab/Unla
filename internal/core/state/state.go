@@ -3,7 +3,6 @@ package state
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/ifuryst/lol"
@@ -22,10 +21,9 @@ type (
 
 	// State contains all the read-only shared state
 	State struct {
-		rawConfigs   []*config.MCPConfig
-		runtime      map[uriPrefix]runtimeUnit
-		metrics      metrics
-		capabilities atomic.Pointer[map[capabilitiesKey]*CapabilitiesEntry]
+		rawConfigs []*config.MCPConfig
+		runtime    map[uriPrefix]runtimeUnit
+		metrics    metrics
 	}
 
 	runtimeUnit struct {
@@ -53,15 +51,11 @@ type (
 )
 
 func NewState() *State {
-	s := &State{
+	return &State{
 		rawConfigs: make([]*config.MCPConfig, 0),
 		runtime:    make(map[uriPrefix]runtimeUnit),
 		metrics:    metrics{},
 	}
-	// Initialize capabilities map
-	initialCapabilities := make(map[capabilitiesKey]*CapabilitiesEntry)
-	s.capabilities.Store(&initialCapabilities)
-	return s
 }
 
 // BuildStateFromConfig creates a new State from the given configuration

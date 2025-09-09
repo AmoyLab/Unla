@@ -52,9 +52,4 @@ type Database interface {
 	// System prompt methods
 	GetSystemPrompt(ctx context.Context, userID uint) (string, error)
 	SaveSystemPrompt(ctx context.Context, userID uint, prompt string) error
-
-	// MCP tool status methods
-	GetToolStatus(ctx context.Context, tenant, server, toolName string) (*MCPToolStatus, error)
-	SetToolStatus(ctx context.Context, tenant, server, toolName string, enabled bool) error
-	GetToolStatuses(ctx context.Context, tenant, server string) ([]*MCPToolStatus, error)
 }

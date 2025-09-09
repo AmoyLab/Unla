@@ -71,15 +71,3 @@ type SystemPrompt struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-// MCPToolStatus represents the enabled/disabled status of MCP tools
-// This stores the status for each tool in each MCP server configuration
-// TableName: mcp_tool_statuses
-type MCPToolStatus struct {
-	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
-	Tenant    string    `json:"tenant" gorm:"type:varchar(50);index:idx_tool_status,unique;not null"`
-	Server    string    `json:"server" gorm:"type:varchar(100);index:idx_tool_status,unique;not null"`
-	ToolName  string    `json:"toolName" gorm:"type:varchar(100);index:idx_tool_status,unique;not null"`
-	Enabled   bool      `json:"enabled" gorm:"not null;default:true"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-}

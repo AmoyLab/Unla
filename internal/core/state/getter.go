@@ -1,8 +1,6 @@
 package state
 
 import (
-	"time"
-
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/core/mcpproxy"
@@ -149,59 +147,3 @@ func (s *State) GetPromptSchemas(prefix string) []mcp.PromptSchema {
 	}
 	return runtime.promptSchemas
 }
-
-
-// GetCapabilities retrieves capabilities info for a tenant and server in a thread-safe manner
-func (s *State) GetCapabilities(tenant, serverName string) *mcp.CapabilitiesInfo {
-	key := makeCapabilitiesKey(tenant, serverName)
-	capabilityMap := s.capabilities.Load()
-	
-	if entry, exists := (*capabilityMap)[key]; exists {
-		// Check if entry has expired
-		if time.Now().Before(entry.ExpiresAt) {
-			// Entry is valid
-			return entry.Info
-		}
-	}
-	
-	return nil
-}
-
-// GetCapabilitiesWithDetails retrieves capabilities entry with all metadata
-func (s *State) GetCapabilitiesWithDetails(tenant, serverName string) *CapabilitiesEntry {
-	key := makeCapabilitiesKey(tenant, serverName)
-	capabilityMap := s.capabilities.Load()
-	
-	if entry, exists := (*capabilityMap)[key]; exists {
-		// Check if entry has expired
-		if time.Now().Before(entry.ExpiresAt) {
-			// Entry is valid
-			return entry
-		}
-	}
-	
-	return nil
-}
-
-// GetAllCapabilities returns all non-expired capabilities for a tenant
-func (s *State) GetAllCapabilities(tenant string) map[string]*mcp.CapabilitiesInfo {
-	capabilityMap := s.capabilities.Load()
-	result := make(map[string]*mcp.CapabilitiesInfo)
-	now := time.Now()
-	
-	for key, entry := range *capabilityMap {
-		keyStr := key.String()
-		// Check if this entry belongs to the specified tenant
-		if len(keyStr) > len(tenant)+1 && keyStr[:len(tenant)+1] == tenant+":" {
-			// Check if entry has expired
-			if now.Before(entry.ExpiresAt) {
-				serverName := keyStr[len(tenant)+1:]
-				result[serverName] = entry.Info
-				// Entry is valid
-			}
-		}
-	}
-	
-	return result
-}
-
