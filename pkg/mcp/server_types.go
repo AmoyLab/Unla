@@ -157,18 +157,12 @@ type (
 
 	// InitializeRequestParams represents parameters for initialize request
 	InitializeRequestParams struct {
-		BaseRequestParams
 		// The latest version of the Model Context Protocol that the client supports
 		ProtocolVersion string `json:"protocolVersion"`
 		// Client capabilities
 		Capabilities ClientCapabilitiesSchema `json:"capabilities"`
 		// Client implementation information
 		ClientInfo ImplementationSchema `json:"clientInfo"`
-	}
-
-	// InitializeRequestSchema represents an initialize request
-	InitializeRequestSchema struct {
-		JSONRPCRequest
 	}
 
 	// ServerCapabilitiesSchema represents capabilities a server may support
@@ -218,15 +212,6 @@ type (
 		Instructions string `json:"instructions"`
 	}
 
-	// InitializedNotification represents an initialized notification
-	InitializedNotification struct {
-		JSONRPCRequest
-	}
-
-	// PingRequest represents a ping request
-	PingRequest struct {
-		JSONRPCRequest
-	}
 
 	JSONRPCErrorSchema struct {
 		JSONRPCBaseResult
@@ -314,42 +299,6 @@ type (
 	}
 )
 
-// NewInitializeRequest creates a new initialize request
-func NewInitializeRequest(id int64, params InitializeRequestParams) InitializeRequestSchema {
-	paramsBytes, _ := json.Marshal(params)
-	return InitializeRequestSchema{
-		JSONRPCRequest: JSONRPCRequest{
-			JSONRPC: JSPNRPCVersion,
-			Id:      id,
-			Method:  Initialize,
-			Params:  paramsBytes,
-		},
-	}
-}
-
-// NewPingRequest creates a new ping request
-func NewPingRequest(id int64) PingRequest {
-	return PingRequest{
-		JSONRPCRequest: JSONRPCRequest{
-			JSONRPC: JSPNRPCVersion,
-			Id:      id,
-			Method:  Ping,
-		},
-	}
-}
-
-func NewJSONRPCBaseResult() JSONRPCBaseResult {
-	return JSONRPCBaseResult{
-		JSONRPC: JSPNRPCVersion,
-		ID:      0,
-	}
-}
-
-func (j JSONRPCBaseResult) WithID(id int) JSONRPCBaseResult {
-	j.ID = id
-	return j
-}
-
 func (t *TextContent) GetType() string {
 	return TextContentType
 }
@@ -362,16 +311,8 @@ func (i *AudioContent) GetType() string {
 	return AudioContentType
 }
 
-// NewCallToolResult creates a new CallToolResult
-// @param content the content of the result
-// @param isError indicates if the result is an error
-// @return *CallToolResult the CallToolResult object
-func NewCallToolResult(content []Content, isError bool) *CallToolResult {
-	return &CallToolResult{
-		Content: content,
-		IsError: isError,
-	}
-}
+
+
 
 // NewCallToolResultText creates a new CallToolResult with text content
 // @param text the text content
@@ -412,7 +353,7 @@ func NewCallToolResultImage(imageData, mimeType string) *CallToolResult {
 func NewCallToolResultAudio(audioData, mimeType string) *CallToolResult {
 	return &CallToolResult{
 		Content: []Content{
-			&ImageContent{
+			&AudioContent{
 				Type:     AudioContentType,
 				Data:     audioData,
 				MimeType: mimeType,
@@ -422,17 +363,3 @@ func NewCallToolResultAudio(audioData, mimeType string) *CallToolResult {
 	}
 }
 
-// NewCallToolResultError creates a new CallToolResult with an error message
-// @param text the error message
-// @return *CallToolResult the CallToolResult object with the error message
-func NewCallToolResultError(text string) *CallToolResult {
-	return &CallToolResult{
-		Content: []Content{
-			&TextContent{
-				Type: TextContentType,
-				Text: text,
-			},
-		},
-		IsError: true,
-	}
-}

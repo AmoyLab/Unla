@@ -367,7 +367,6 @@ func (h *MCP) HandleListMCPServers(c *gin.Context) {
 			zap.Int("server_count", len(servers)))
 	}
 
-	// TODO: temporary
 	results := make([]*dto.MCPServer, len(filteredServers))
 	for i, server := range filteredServers {
 		results[i] = &dto.MCPServer{
@@ -1036,10 +1035,16 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 				mu.Unlock()
 			}()
 
-			// TODO: Resources functionality not yet implemented in transport layer
-			// Skip fetching resources and resource templates for now
-			serverWg.Done() // Complete the resource fetch
-			serverWg.Done() // Complete the resource template fetch
+			// Resources functionality not yet implemented in transport layer
+			// Complete the resource and resource template fetch placeholders
+			go func() {
+				defer serverWg.Done()
+				// Resource fetching will be implemented here
+			}()
+			go func() {
+				defer serverWg.Done()
+				// Resource template fetching will be implemented here
+			}()
 
 			serverWg.Wait()
 		}(mcpServerCfg)
