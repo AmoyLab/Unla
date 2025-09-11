@@ -4,9 +4,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/auth/login';
 import { LLMChatInterface } from './pages/chat/llm-chat-interface';
+import CapabilitiesPage from './pages/gateway/capabilities';
 import { ConfigVersionsPage } from './pages/gateway/config-versions';
 import { GatewayManager } from './pages/gateway/gateway-manager';
-import CapabilitiesPage from './pages/gateway/capabilities';
 import LLMSettings from './pages/llm/llm-settings';
 import { TenantManagement } from './pages/users/tenant-management';
 import { UserManagement } from './pages/users/user-management';

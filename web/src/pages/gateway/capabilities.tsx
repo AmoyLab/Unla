@@ -1,9 +1,10 @@
-import {useParams, useNavigate} from 'react-router-dom';
 import {Button, Breadcrumbs, BreadcrumbItem} from '@heroui/react';
 import {useTranslation} from 'react-i18next';
+import {useNavigate, useParams} from 'react-router-dom';
+
+import LocalIcon from '../../components/LocalIcon';
 
 import CapabilitiesViewer from './components/CapabilitiesViewer';
-import LocalIcon from '../../components/LocalIcon';
 
 export default function CapabilitiesPage() {
   const {t} = useTranslation();
