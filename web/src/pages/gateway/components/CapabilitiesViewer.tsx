@@ -23,8 +23,8 @@ import {
 import copy from 'copy-to-clipboard';
 import hljs from 'highlight.js/lib/core';
 import json from 'highlight.js/lib/languages/json';
-import 'highlight.js/styles/github.css';
 import yaml from 'highlight.js/lib/languages/yaml';
+import 'highlight.js/styles/github.css';
 import YAML from 'js-yaml';
 import React from 'react';
 import {useTranslation} from 'react-i18next';
@@ -131,7 +131,8 @@ const ExportButton: React.FC<ExportButtonProps> = ({ data, filename, className =
       URL.revokeObjectURL(url);
       
       toast.success(t('capabilities.export_success'));
-    } catch {
+    } catch (error) {
+      console.error('Export error:', error);
       toast.error(t('capabilities.export_failed'));
     }
   };
@@ -979,7 +980,17 @@ const CapabilitiesViewer: React.FC<CapabilitiesViewerProps> = ({
                           {t('capabilities.parameters')} ({paramCount})
                         </span>
                       </div>
-                      <div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleParamExpansion(item.name)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleParamExpansion(item.name);
+                          }
+                        }}
+                      >
                         <Button
                           size="sm"
                           variant="light"
@@ -1010,7 +1021,7 @@ const CapabilitiesViewer: React.FC<CapabilitiesViewerProps> = ({
                             // 相同类型按字母顺序排序
                             return a.localeCompare(b);
                           })
-                          .map(([paramName, paramSchema]: [string, unknown]) => (
+                          .map(([paramName, paramSchema]: [string, { type?: string; description?: string; enum?: unknown[]; default?: unknown }]) => (
                           <div key={paramName} className="flex items-start justify-between py-2 px-3 bg-default-50 rounded-lg">
                             <div className="flex-grow min-w-0">
                               <div className="flex items-center gap-2 mb-1">
