@@ -84,6 +84,7 @@ type (
 		URL          string                `json:"url,omitempty" yaml:"url,omitempty"`         // for sse and streamable-http
 		Policy       cnst.MCPStartupPolicy `json:"policy" yaml:"policy"`                       // onStart or onDemand
 		Preinstalled bool                  `json:"preinstalled" yaml:"preinstalled"`           // whether to install this MCP server when mcp-gateway starts
+		AllowAuthorizationPassThrough bool `json:"allowAuthorizationPassThrough" yaml:"allowAuthorizationPassThrough"` // if true, pass Authorization header
 	}
 
 	ArgConfig struct {

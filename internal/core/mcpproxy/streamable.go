@@ -29,12 +29,24 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 	if t.IsRunning() {
 		return nil
 	}
-
-	// Create streamable transport
-	streamableTransport, err := transport.NewStreamableHTTP(t.cfg.URL)
-	if err != nil {
-		return fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
+	// Extract Authorization header from context
+	authHeader := ""
+	if v := ctx.Value(CtxKeyAuthorization); v != nil {
+		if s, ok := v.(string); ok {
+			authHeader = s
+		}
 	}
+
+	// Dynamically set Authorization header from context if present
+	headers := map[string]string{}
+	if authHeader != "" {
+		headers["Authorization"] = authHeader
+	}
+
+	streamableTransport, err := transport.NewStreamableHTTP(
+		t.cfg.URL,
+		transport.WithHTTPHeaders(headers),
+	)	
 
 	// Start the transport
 	if err := streamableTransport.Start(ctx); err != nil {
@@ -53,6 +65,7 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 	}
 
 	_, err = c.Initialize(ctx, initRequest)
+
 	if err != nil {
 		_ = streamableTransport.Close()
 		return fmt.Errorf("failed to initialize streamable client: %w", err)
@@ -139,6 +152,7 @@ func (t *StreamableTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema,
 }
 
 func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {
+
 	if !t.IsRunning() {
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -148,7 +162,6 @@ func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolP
 		if err != nil {
 			return nil, err
 		}
-
 		if err := t.Start(ctx, tmplCtx); err != nil {
 			return nil, err
 		}
@@ -169,6 +182,7 @@ func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolP
 	callRequest := mcpgo.CallToolRequest{}
 	callRequest.Params.Name = params.Name
 	callRequest.Params.Arguments = toolCallRequestParams
+
 
 	res, err := t.client.CallTool(ctx, callRequest)
 	if err != nil {

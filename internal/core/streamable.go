@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,7 +11,13 @@ import (
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
+
+	"github.com/amoylab/unla/internal/core/mcpproxy"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	"github.com/amoylab/unla/pkg/version"
+
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -240,7 +247,31 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				return
 			}
 
-			tools, err = transport.FetchTools(c.Request.Context())
+            // Only add Authorization header if allowed by config
+            mcpServerConfig := s.state.GetRawConfigs()
+            allowAuth := false
+            for _, cfg := range mcpServerConfig {
+                for _, mcpSrv := range cfg.McpServers {
+                    // Find the MCPServerConfig for this prefix
+                    if conn.Meta().Prefix != "" {
+                        for _, router := range cfg.Routers {
+                            if router.Server == mcpSrv.Name && router.Prefix == conn.Meta().Prefix {
+                                allowAuth = mcpSrv.AllowAuthorizationPassThrough
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+
+            authHeader := c.GetHeader("Authorization")
+
+			ctx := c.Request.Context()
+            if allowAuth && authHeader != "" {
+                ctx = context.WithValue(ctx, mcpproxy.CtxKeyAuthorization, authHeader)
+            }
+
+			tools, err = transport.FetchTools(ctx)
 			if err != nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -284,7 +315,16 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				return
 			}
 
-			result, err = transport.CallTool(c.Request.Context(), params, mergeRequestInfo(conn.Meta().Request, c.Request))
+            authHeader := c.GetHeader("Authorization")
+
+			// Add it to the context if present
+			ctx := c.Request.Context()
+			if authHeader != "" {
+				// Use the correct import path for mcpproxy and key type
+				ctx = context.WithValue(ctx, mcpproxy.CtxKeyAuthorization, authHeader)
+			}
+
+			result, err = transport.CallTool(ctx, params, mergeRequestInfo(conn.Meta().Request, c.Request))
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return

@@ -335,12 +335,16 @@
     "property_description": "Property Description",
     "header_name_placeholder": "Enter header name",
     "header_value_placeholder": "Enter header value",
+
+    "allow_authorization_pass_through": "Allow Authorization Pass Through"
+
     "select_file": "Select File",
     "prefix_placeholder": "Enter prefix (optional)",
     "upload_openapi_file": "Upload OpenAPI File",
     "drag_drop_openapi": "Drag and drop your OpenAPI specification",
     "or_click_to_browse": "or click to browse files",
     "import_openapi_description": "Import OpenAPI specification to create MCP server configuration"
+
   },
   "chat": {
     "title": "Chat",

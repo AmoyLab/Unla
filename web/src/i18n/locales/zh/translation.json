@@ -335,12 +335,16 @@
     "property_description": "属性描述",
     "header_name_placeholder": "请输入头部名称",
     "header_value_placeholder": "请输入头部值",
+
+    "allow_authorization_pass_through": "允许透传 Authorization 头部"
+
     "select_file": "选择文件",
     "prefix_placeholder": "输入前缀（可选）",
     "upload_openapi_file": "上传 OpenAPI 文件",
     "drag_drop_openapi": "拖放您的 OpenAPI 规范文件",
     "or_click_to_browse": "或点击浏览文件",
     "import_openapi_description": "导入 OpenAPI 规范以创建 MCP 服务器配置"
+
   },
   "chat": {
     "title": "聊天",

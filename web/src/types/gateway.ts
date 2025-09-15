@@ -37,6 +37,7 @@ export interface MCPServerConfig {
   url?: string;
   policy: string;
   preinstalled: boolean;
+  allowAuthorizationPassThrough?: boolean;
 }
 
 export interface ToolConfig {
