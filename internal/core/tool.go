@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -46,12 +45,15 @@ func (s *Server) shouldIgnoreHeader(headerName string) bool {
 }
 
 // prepareRequest prepares the HTTP request with templates and arguments
+
 func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.Request, error) {
+
 	// Process endpoint template
 	endpoint, err := template.RenderTemplate(tool.Endpoint, tmplCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render endpoint template: %w", err)
 	}
+
 
 	// Process request body template
 	var reqBody io.Reader
@@ -77,6 +79,7 @@ func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Conte
 	}
 
 	// Process header templates(override mcp request header if key conflicts)
+
 	for k, v := range tool.Headers {
 		rendered, err := template.RenderTemplate(v, tmplCtx)
 		if err != nil {
@@ -85,11 +88,7 @@ func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Conte
 		req.Header.Set(k, rendered)
 	}
 
-	return req, nil
-}
-
-// processArguments processes tool arguments and adds them to the request
-func processArguments(req *http.Request, tool *config.ToolConfig, args map[string]any) {
+	// Process arguments for headers and query parameters
 	for _, arg := range tool.Args {
 		value := fmt.Sprint(args[arg.Name])
 		if value == "" || value == "<nil>" {
@@ -102,22 +101,11 @@ func processArguments(req *http.Request, tool *config.ToolConfig, args map[strin
 			q := req.URL.Query()
 			q.Add(arg.Name, value)
 			req.URL.RawQuery = q.Encode()
-		case "form-data":
-			var b bytes.Buffer
-			writer := multipart.NewWriter(&b)
-
-			if err := writer.WriteField(arg.Name, value); err != nil {
-				continue
-			}
-
-			if err := writer.Close(); err != nil {
-				continue
-			}
-
-			req.Body = io.NopCloser(&b)
-			req.Header.Set("Content-Type", writer.FormDataContentType())
 		}
+		// form-data is handled through request body template
 	}
+
+	return req, nil
 }
 
 // preprocessResponseData processes response data to handle []any type
@@ -217,14 +205,34 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 	}
 
 	// Log request details at debug level
-	s.logger.Debug("tool request details",
-		zap.String("tool", tool.Name),
-		zap.String("url", req.URL.String()),
-		zap.String("method", req.Method),
-		zap.Any("headers", req.Header))
-
-	// Process arguments
-	processArguments(req, tool, args)
+	if req.Body != nil {
+		bodyBytes, err := io.ReadAll(req.Body)
+		if err == nil {
+			s.logger.Debug("tool request details",
+				zap.String("tool", tool.Name),
+				zap.String("url", req.URL.String()),
+				zap.String("method", req.Method),
+				zap.Any("headers", req.Header),
+				zap.String("content_type", req.Header.Get("Content-Type")),
+				zap.Int("body_size", len(bodyBytes)),
+				zap.String("body", string(bodyBytes)))
+			// Restore the body for further use
+			req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		} else {
+			s.logger.Debug("tool request details (failed to read body)",
+				zap.String("tool", tool.Name),
+				zap.String("url", req.URL.String()),
+				zap.String("method", req.Method),
+				zap.Any("headers", req.Header),
+				zap.Error(err))
+		}
+	} else {
+		s.logger.Debug("tool request details (no body)",
+			zap.String("tool", tool.Name),
+			zap.String("url", req.URL.String()),
+			zap.String("method", req.Method),
+			zap.Any("headers", req.Header))
+	}
 
 	// Execute request
 	cli, err := createHTTPClient(tool)
@@ -472,3 +480,4 @@ func mergeRequestInfo(meta *session.RequestInfo, req *http.Request) *template.Re
 
 	return wrapper
 }
+
