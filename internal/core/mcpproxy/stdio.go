@@ -11,11 +11,14 @@ import (
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/pkg/mcp"
+	apptrace "github.com/amoylab/unla/pkg/trace"
 	"github.com/amoylab/unla/pkg/utils"
 	"github.com/amoylab/unla/pkg/version"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // StdioTransport implements Transport using standard input/output
@@ -94,6 +97,11 @@ func (t *StdioTransport) IsRunning() bool {
 }
 
 func (t *StdioTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error) {
+	scope := apptrace.Tracer(cnst.TraceMCPProxy).
+		Start(ctx, cnst.SpanTransportStdIOFetchTools, oteltrace.WithSpanKind(oteltrace.SpanKindClient)).
+		WithAttrs(attribute.String(cnst.AttrTransportType, "stdio"))
+	ctx = scope.Ctx
+	defer scope.End()
 	if !t.IsRunning() {
 		if err := t.Start(ctx, template.NewContext()); err != nil {
 			return nil, err
@@ -155,6 +163,14 @@ func (t *StdioTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, erro
 }
 
 func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {
+	scope := apptrace.Tracer(cnst.TraceMCPProxy).
+		Start(ctx, cnst.SpanTransportStdIOCallTool, oteltrace.WithSpanKind(oteltrace.SpanKindClient)).
+		WithAttrs(
+			attribute.String(cnst.AttrTransportType, "stdio"),
+			attribute.String(cnst.AttrMCPTool, params.Name),
+		)
+	ctx = scope.Ctx
+	defer scope.End()
 	if !t.IsRunning() {
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {

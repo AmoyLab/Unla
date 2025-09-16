@@ -15,12 +15,21 @@ import (
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
 
+	apptrace "github.com/amoylab/unla/pkg/trace"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // handleSSE handles SSE connections
 func (s *Server) handleSSE(c *gin.Context) {
+	// Create a child span for the SSE connection lifecycle
+	scope := apptrace.Tracer(cnst.TraceCore).
+		Start(c.Request.Context(), cnst.SpanSSEConnect, oteltrace.WithSpanKind(oteltrace.SpanKindInternal))
+	ctx := scope.Ctx
+	defer scope.End()
+
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
 	c.Writer.Header().Set("Connection", "keep-alive")
@@ -65,6 +74,14 @@ func (s *Server) handleSSE(c *gin.Context) {
 		Extra:     nil,
 	}
 
+	// Annotate span with session metadata
+	scope.WithAttrs(
+		attribute.String(cnst.AttrMCPSessionID, sessionID),
+		attribute.String(cnst.AttrMCPPrefix, prefix),
+		attribute.String(cnst.AttrClientAddr, c.Request.RemoteAddr),
+		attribute.String(cnst.AttrClientUserAgent, c.Request.UserAgent()),
+	)
+
 	s.logger.Info("establishing SSE connection",
 		zap.String("session_id", sessionID),
 		zap.String("prefix", prefix),
@@ -72,7 +89,7 @@ func (s *Server) handleSSE(c *gin.Context) {
 		zap.String("user_agent", c.Request.UserAgent()),
 	)
 
-	conn, err := s.sessions.Register(c.Request.Context(), meta)
+	conn, err := s.sessions.Register(ctx, meta)
 	if err != nil {
 		s.logger.Error("failed to register SSE session",
 			zap.Error(err),
@@ -136,6 +153,11 @@ func (s *Server) handleSSE(c *gin.Context) {
 
 			switch event.Event {
 			case "message":
+				// Record an event for observability
+				scope.Span.AddEvent("sse.message", oteltrace.WithAttributes(
+					attribute.String("event_type", event.Event),
+					attribute.Int("data_size", len(event.Data)),
+				))
 				_, err = fmt.Fprintf(c.Writer, "event: message\ndata: %s\n\n", event.Data)
 				if err != nil {
 					s.logger.Error("failed to send SSE message",
@@ -145,6 +167,9 @@ func (s *Server) handleSSE(c *gin.Context) {
 					)
 				}
 			default:
+				scope.Span.AddEvent("sse.event", oteltrace.WithAttributes(
+					attribute.String("event_type", event.Event),
+				))
 				_, err = fmt.Fprint(c.Writer, event)
 				if err != nil {
 					s.logger.Error("failed to write SSE event",
@@ -155,7 +180,7 @@ func (s *Server) handleSSE(c *gin.Context) {
 				}
 			}
 			c.Writer.Flush()
-		case <-c.Request.Context().Done():
+		case <-ctx.Done():
 			s.logger.Info("SSE client disconnected",
 				zap.String("session_id", sessionID),
 				zap.String("remote_addr", c.Request.RemoteAddr),

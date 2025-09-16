@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/amoylab/unla/pkg/helper"
-
+	"github.com/amoylab/unla/pkg/trace"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 )
@@ -42,6 +42,7 @@ type (
 		PID            string           `yaml:"pid"`
 		SuperAdmin     SuperAdminConfig `yaml:"super_admin"`
 		Logger         LoggerConfig     `yaml:"logger"`
+		Tracing        trace.Config     `yaml:"tracing"`
 		Storage        StorageConfig    `yaml:"storage"`
 		Notifier       NotifierConfig   `yaml:"notifier"`
 		Session        SessionConfig    `yaml:"session"`

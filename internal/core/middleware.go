@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/amoylab/unla/internal/common/config"
-
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.uber.org/zap"
 )
 
@@ -171,4 +171,23 @@ func (s *Server) corsMiddleware(cors *config.CORSConfig) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// EnableTracing attaches OpenTelemetry gin middleware using the given service name.
+func (s *Server) EnableTracing(serviceName string) {
+	if s == nil || s.router == nil {
+		return
+	}
+	s.router.Use(otelgin.Middleware(serviceName,
+		otelgin.WithFilter(func(r *http.Request) bool {
+			if r == nil || r.URL == nil {
+				return true
+			}
+			// Skip tracing for health check endpoint
+			if r.URL.Path == "/health_check" {
+				return false
+			}
+			return true
+		}),
+	))
 }

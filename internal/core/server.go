@@ -17,6 +17,7 @@ import (
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/internal/mcp/storage"
 	"github.com/amoylab/unla/pkg/mcp"
+	apptrace "github.com/amoylab/unla/pkg/trace"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -63,6 +64,7 @@ type (
 		lastUpdateTime  time.Time
 		auth            auth.Auth
 		forwardConfig   config.ForwardConfig
+		traceCapture    apptrace.CaptureConfig
 		// Pre-parsed header lists for efficient lookup
 		ignoreHeaders   []string
 		allowHeaders    []string
@@ -71,7 +73,7 @@ type (
 )
 
 // NewServer creates a new MCP server
-func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth, forwardConfig config.ForwardConfig) (*Server, error) {
+func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth, forwardConfig config.ForwardConfig, traceCapture apptrace.CaptureConfig) (*Server, error) {
 	s := &Server{
 		logger:          logger,
 		port:            port,
@@ -83,6 +85,7 @@ func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore s
 		toolRespHandler: CreateResponseHandlerChain(),
 		auth:            a,
 		forwardConfig:   forwardConfig,
+		traceCapture:    traceCapture,
 		caseInsensitive: forwardConfig.Header.CaseInsensitive,
 	}
 

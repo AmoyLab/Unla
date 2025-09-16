@@ -12,8 +12,11 @@ import (
 	"github.com/amoylab/unla/pkg/mcp"
 	"github.com/amoylab/unla/pkg/version"
 
+	apptrace "github.com/amoylab/unla/pkg/trace"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -178,6 +181,20 @@ func (s *Server) handleDelete(c *gin.Context) {
 }
 
 func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection) {
+	// Create a span per MCP method to group downstream work
+	scope := apptrace.Tracer(cnst.TraceCore).
+		Start(c.Request.Context(), cnst.SpanMCPMethodPrefix+req.Method, oteltrace.WithSpanKind(oteltrace.SpanKindInternal)).
+		WithAttrs(
+			attribute.String(cnst.AttrMCPSessionID, conn.Meta().ID),
+			attribute.String(cnst.AttrMCPPrefix, conn.Meta().Prefix),
+			attribute.String("mcp.method", req.Method),
+		)
+	ctx := scope.Ctx
+	defer scope.End()
+
+	// Ensure downstream operations see this span in the request context
+	c.Request = c.Request.WithContext(ctx)
+
 	// Process the request based on its method
 	switch req.Method {
 	case mcp.Initialize:

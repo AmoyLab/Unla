@@ -11,10 +11,13 @@ import (
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/template"
 	"github.com/amoylab/unla/pkg/mcp"
+	apptrace "github.com/amoylab/unla/pkg/trace"
 	"github.com/amoylab/unla/pkg/version"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // SSETransport implements Transport using Server-Sent Events
@@ -83,6 +86,11 @@ func (t *SSETransport) IsRunning() bool {
 }
 
 func (t *SSETransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error) {
+	scope := apptrace.Tracer(cnst.TraceMCPProxy).
+		Start(ctx, cnst.SpanTransportSSEFetchTools, oteltrace.WithSpanKind(oteltrace.SpanKindClient)).
+		WithAttrs(attribute.String(cnst.AttrTransportType, "sse"))
+	ctx = scope.Ctx
+	defer scope.End()
 	if !t.IsRunning() {
 		if err := t.Start(ctx, nil); err != nil {
 			return nil, err
@@ -140,6 +148,14 @@ func (t *SSETransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error)
 }
 
 func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {
+	scope := apptrace.Tracer(cnst.TraceMCPProxy).
+		Start(ctx, cnst.SpanTransportSSECallTool, oteltrace.WithSpanKind(oteltrace.SpanKindClient)).
+		WithAttrs(
+			attribute.String(cnst.AttrTransportType, "sse"),
+			attribute.String(cnst.AttrMCPTool, params.Name),
+		)
+	ctx = scope.Ctx
+	defer scope.End()
 	if !t.IsRunning() {
 		if err := t.Start(ctx, nil); err != nil {
 			return nil, err

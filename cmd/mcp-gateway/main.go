@@ -18,6 +18,7 @@ import (
 	"github.com/amoylab/unla/internal/mcp/storage/notifier"
 	pidHelper "github.com/amoylab/unla/pkg/helper"
 	"github.com/amoylab/unla/pkg/logger"
+	"github.com/amoylab/unla/pkg/trace"
 	"github.com/amoylab/unla/pkg/utils"
 	"github.com/amoylab/unla/pkg/version"
 
@@ -181,9 +182,37 @@ func run() {
 	}
 
 	// Create server instance
-	server, err := core.NewServer(logger, cfg.Port, store, sessionStore, a, cfg.Forward)
+	server, err := core.NewServer(logger, cfg.Port, store, sessionStore, a, cfg.Forward, cfg.Tracing.Capture)
 	if err != nil {
 		logger.Fatal("Failed to create server", zap.Error(err))
+	}
+
+	// Enable gin tracing middleware if tracing is configured
+	if cfg.Tracing.Enabled {
+		if cfg.Tracing.ServiceName == "" {
+			cfg.Tracing.ServiceName = "mcp-gateway"
+		}
+		shutdown, err := trace.InitTracing(ctx, &cfg.Tracing, logger)
+		if err != nil {
+			logger.Error("Failed to initialize tracing", zap.Error(err))
+		} else {
+			// Ensure tracer provider shutdown on exit
+			defer func() {
+				// try to flush spans with timeout
+				ctxTo, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := shutdown(ctxTo); err != nil {
+					logger.Warn("Tracing shutdown error", zap.Error(err))
+				}
+			}()
+			logger.Info("Tracing enabled",
+				zap.String("endpoint", cfg.Tracing.Endpoint),
+				zap.String("protocol", cfg.Tracing.Protocol),
+			)
+
+		}
+
+		server.EnableTracing(cfg.Tracing.ServiceName)
 	}
 
 	err = server.RegisterRoutes(ctx)

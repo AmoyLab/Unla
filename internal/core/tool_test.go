@@ -153,7 +153,7 @@ func TestPrepareRequest(t *testing.T) {
 	ctx.Request.Headers["H1"] = "ctx1"
 	ctx.Request.Headers["H2"] = "ctx2"
 
-	req, err := s.prepareRequest(tool, ctx)
+	req, rendered, err := s.prepareRequest(tool, ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, http.MethodPost, req.Method)
 	assert.Equal(t, "http://example.com/V", req.URL.String())
@@ -167,4 +167,6 @@ func TestPrepareRequest(t *testing.T) {
 
 	b, _ := io.ReadAll(req.Body)
 	assert.Equal(t, `{"a": "V"}`, string(b))
+	// rendered body is returned for tracing capture
+	assert.Equal(t, `{"a": "V"}`, rendered)
 }

@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -30,6 +34,15 @@ func (s *Server) sendProtocolError(c *gin.Context, id any, message string, statu
 			zap.Int("status_code", statusCode),
 			zap.Int("error_code", bizCode),
 			zap.String("remote_addr", c.Request.RemoteAddr),
+		)
+	}
+
+	// Annotate active span with a concise error reason for observability
+	if span := oteltrace.SpanFromContext(c.Request.Context()); span != nil {
+		span.SetStatus(codes.Error, message)
+		span.SetAttributes(
+			attribute.String(cnst.AttrErrorReason, message),
+			attribute.Int(cnst.AttrMCPErrorCode, bizCode),
 		)
 	}
 
@@ -65,6 +78,18 @@ func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection,
 			zap.String("session_id", conn.Meta().ID),
 			zap.Error(err),
 			zap.Bool("is_sse", isSSE),
+		)
+	}
+
+	// Tag current HTTP span with a brief error reason; keep it concise
+	if span := oteltrace.SpanFromContext(c.Request.Context()); span != nil {
+		reason := err.Error()
+		if len(reason) > 120 { // avoid long logs in traces
+			reason = reason[:120]
+		}
+		span.SetStatus(codes.Error, reason)
+		span.SetAttributes(
+			attribute.String(cnst.AttrErrorReason, reason),
 		)
 	}
 

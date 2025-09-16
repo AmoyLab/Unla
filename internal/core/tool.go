@@ -17,6 +17,13 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
 
+	apptrace "github.com/amoylab/unla/pkg/trace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
+
+	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/internal/template"
@@ -46,26 +53,28 @@ func (s *Server) shouldIgnoreHeader(headerName string) bool {
 }
 
 // prepareRequest prepares the HTTP request with templates and arguments
-func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.Request, error) {
+func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.Request, string, error) {
 	// Process endpoint template
 	endpoint, err := template.RenderTemplate(tool.Endpoint, tmplCtx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to render endpoint template: %w", err)
+		return nil, "", fmt.Errorf("failed to render endpoint template: %w", err)
 	}
 
 	// Process request body template
 	var reqBody io.Reader
+	var renderedBody string
 	if tool.RequestBody != "" {
 		rendered, err := template.RenderTemplate(tool.RequestBody, tmplCtx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to render request body template: %w", err)
+			return nil, "", fmt.Errorf("failed to render request body template: %w", err)
 		}
-		reqBody = strings.NewReader(rendered)
+		renderedBody = rendered
+		reqBody = strings.NewReader(renderedBody)
 	}
 
 	req, err := http.NewRequest(tool.Method, endpoint, reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	// Transfer request header to downstream api request
@@ -80,12 +89,12 @@ func (s *Server) prepareRequest(tool *config.ToolConfig, tmplCtx *template.Conte
 	for k, v := range tool.Headers {
 		rendered, err := template.RenderTemplate(v, tmplCtx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to render header template: %w", err)
+			return nil, "", fmt.Errorf("failed to render header template: %w", err)
 		}
 		req.Header.Set(k, rendered)
 	}
 
-	return req, nil
+	return req, renderedBody, nil
 }
 
 // processArguments processes tool arguments and adds them to the request
@@ -171,15 +180,25 @@ func createHTTPClient(tool *config.ToolConfig) (*http.Client, error) {
 			}
 		}
 
-		return &http.Client{Transport: transport}, nil
+		return &http.Client{Transport: otelhttp.NewTransport(transport)}, nil
 	}
 
-	return &http.Client{}, nil
+	return &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}, nil
 }
 
 // executeHTTPTool executes a tool with the given arguments
 func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfig,
 	args map[string]any, request *http.Request, serverCfg map[string]string) (*mcp.CallToolResult, error) {
+	// Create a span to represent the tool execution lifecycle
+	scope := apptrace.Tracer(cnst.TraceCore).
+		Start(request.Context(), cnst.SpanHTTPToolExecute, oteltrace.WithSpanKind(oteltrace.SpanKindInternal)).
+		WithAttrs(
+			attribute.String(cnst.AttrMCPSessionID, conn.Meta().ID),
+			attribute.String(cnst.AttrMCPPrefix, conn.Meta().Prefix),
+			attribute.String(cnst.AttrMCPTool, tool.Name),
+		)
+	ctx := scope.Ctx
+	defer scope.End()
 	// Fill default values for missing arguments
 	fillDefaultArgs(tool, args)
 
@@ -207,13 +226,47 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 	}
 
 	// Prepare HTTP request
-	req, err := s.prepareRequest(tool, tmplCtx)
+	req, renderedBody, err := s.prepareRequest(tool, tmplCtx)
 	if err != nil {
 		s.logger.Error("failed to prepare HTTP request",
 			zap.String("tool", tool.Name),
 			zap.String("session_id", conn.Meta().ID),
 			zap.Error(err))
 		return nil, err
+	}
+
+	// Optionally capture selected downstream request fields via templates on span
+	if s.traceCapture.DownstreamRequest.Enabled {
+		include := s.traceCapture.DownstreamRequest.IncludeFields
+		maxLen := s.traceCapture.DownstreamRequest.MaxFieldLength
+		if maxLen <= 0 {
+			maxLen = 256
+		}
+		if len(include) > 0 {
+			for k, tmpl := range include {
+				rendered, err := template.RenderTemplate(tmpl, tmplCtx)
+				if err != nil {
+					// Skip invalid templates silently to avoid breaking requests
+					continue
+				}
+				if len(rendered) > maxLen {
+					rendered = rendered[:maxLen]
+				}
+				scope.Span.SetAttributes(attribute.String(cnst.AttrDownstreamArgPrefix+k, rendered))
+			}
+		}
+		// Optionally capture downstream request body content (rendered)
+		if s.traceCapture.DownstreamRequest.BodyEnabled && renderedBody != "" {
+			bMax := s.traceCapture.DownstreamRequest.BodyMaxLength
+			if bMax <= 0 {
+				bMax = 256
+			}
+			bodyPreview := renderedBody
+			if len(bodyPreview) > bMax {
+				bodyPreview = bodyPreview[:bMax]
+			}
+			scope.Span.SetAttributes(attribute.String(cnst.AttrDownstreamReqBody, bodyPreview))
+		}
 	}
 
 	// Log request details at debug level
@@ -241,6 +294,8 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 		zap.String("url", req.URL.String()),
 		zap.String("session_id", conn.Meta().ID))
 
+	// Ensure downstream request carries current trace context
+	req = req.WithContext(ctx)
 	resp, err := cli.Do(req)
 	if err != nil {
 		s.logger.Error("failed to execute HTTP request",
@@ -272,6 +327,28 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 		zap.String("session_id", conn.Meta().ID),
 		zap.String("response_body", string(respBodyBytes)),
 		zap.Int("status", resp.StatusCode))
+
+	// If downstream response indicates error, annotate the span with concise details per config
+	if resp.StatusCode >= 400 && s.traceCapture.DownstreamError.Enabled {
+		maxLen := s.traceCapture.DownstreamError.MaxBodyLength
+		if maxLen <= 0 {
+			maxLen = 256
+		}
+		preview := string(respBodyBytes)
+		if len(preview) > maxLen {
+			preview = preview[:maxLen]
+		}
+		scope.Span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", resp.StatusCode))
+		scope.Span.SetAttributes(
+			attribute.Int(cnst.AttrHTTPStatusCode, resp.StatusCode),
+			attribute.String(cnst.AttrHTTPRespType, resp.Header.Get("Content-Type")),
+			attribute.Int(cnst.AttrHTTPRespSize, len(respBodyBytes)),
+		)
+		if maxLen > 0 {
+			scope.Span.SetAttributes(attribute.String(cnst.AttrHTTPErrorPreview, preview))
+		}
+		scope.Span.AddEvent("http.error_response")
+	}
 
 	// Process response
 	callToolResult, err := s.toolRespHandler.Handle(resp, tool, tmplCtx)

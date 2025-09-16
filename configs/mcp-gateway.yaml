@@ -16,6 +16,33 @@ logger:
   color: ${LOGGER_COLOR:false}                                            # whether to use color in console output
   stacktrace: ${LOGGER_STACKTRACE:true}                                   # whether to include stacktrace in error logs
 
+# Tracing (OpenTelemetry -> Jaeger) configuration
+tracing:
+  enabled: ${TRACING_ENABLED:false}
+  service_name: "${TRACING_SERVICE_NAME:mcp-gateway}"
+  endpoint: "${TRACING_ENDPOINT:localhost:4317}"      # For Jaeger all-in-one (collector): use OTLP gRPC on 4317 or HTTP on 4318
+  protocol: "${TRACING_PROTOCOL:grpc}"                # grpc or http
+  insecure: ${TRACING_INSECURE:true}
+  sampler_rate: ${TRACING_SAMPLER_RATE:0.1}           # 0.0 ~ 1.0
+  environment: "${TRACING_ENV:dev}"
+  headers: {}                                         # optional exporter headers
+  capture:
+    downstream_error:
+      enabled: ${TRACE_ERR_BODY_ENABLED:false}
+      max_body_length: ${TRACE_ERR_BODY_MAX_LEN:256}
+    # NOTE: The following downstream_request capture settings are GLOBAL and affect all routes/prefixes.
+    # Use with extreme caution to avoid leaking sensitive information into tracing systems.
+    # Collect only what is necessary for debugging/observability.
+    downstream_request:
+      enabled: ${TRACE_REQ_ARGS_ENABLED:false}
+      # WARNING: Capturing request body may expose secrets (tokens, passwords, PII).
+      # Do NOT enable globally unless strictly necessary, and prefer
+      # selective, minimal sampling in controlled environments.
+      body_enabled: ${TRACE_REQ_BODY_ENABLED:false}
+      body_max_length: ${TRACE_REQ_BODY_MAX_LEN:256}
+      max_field_length: ${TRACE_REQ_ARG_MAX_LEN:256}
+      include_fields: {}
+
 # Storage configuration
 storage:
   type: "${GATEWAY_STORAGE_TYPE:db}"  # db or api
