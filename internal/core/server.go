@@ -72,8 +72,22 @@ type (
 	}
 )
 
-// NewServer creates a new MCP server
-func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth, forwardConfig config.ForwardConfig, traceCapture apptrace.CaptureConfig) (*Server, error) {
+// ServerOption allows configuring optional server features without breaking callers.
+type ServerOption func(*Server)
+
+// WithTraceCapture sets the trace capture configuration.
+func WithTraceCapture(c apptrace.CaptureConfig) ServerOption {
+	return func(s *Server) { s.traceCapture = c }
+}
+
+// WithForwardConfig sets the forward proxy configuration.
+func WithForwardConfig(cfg config.ForwardConfig) ServerOption {
+	return func(s *Server) { s.applyForwardConfig(cfg) }
+}
+
+// NewServer creates a new MCP server. Required params are explicit; optional
+// features are configured via ServerOption (e.g., tracing, forward config).
+func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store, a auth.Auth, opts ...ServerOption) (*Server, error) {
 	s := &Server{
 		logger:          logger,
 		port:            port,
@@ -84,15 +98,13 @@ func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore s
 		shutdownCh:      make(chan struct{}),
 		toolRespHandler: CreateResponseHandlerChain(),
 		auth:            a,
-		forwardConfig:   forwardConfig,
-		traceCapture:    traceCapture,
-		caseInsensitive: forwardConfig.Header.CaseInsensitive,
 	}
 
-	// Pre-parse header lists for efficient runtime lookup (only if forward is enabled)
-	if forwardConfig.Enabled {
-		s.ignoreHeaders = parseHeaderList(forwardConfig.Header.IgnoreHeaders, forwardConfig.Header.CaseInsensitive)
-		s.allowHeaders = parseHeaderList(forwardConfig.Header.AllowHeaders, forwardConfig.Header.CaseInsensitive)
+	// Apply options
+	for _, opt := range opts {
+		if opt != nil {
+			opt(s)
+		}
 	}
 
 	// Load HTML templates
@@ -103,6 +115,19 @@ func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore s
 	s.router.Use(s.loggerMiddleware())
 	s.router.Use(s.recoveryMiddleware())
 	return s, nil
+}
+
+// applyForwardConfig sets forward config and recomputes derived fields.
+func (s *Server) applyForwardConfig(cfg config.ForwardConfig) {
+	s.forwardConfig = cfg
+	s.caseInsensitive = cfg.Header.CaseInsensitive
+	if cfg.Enabled {
+		s.ignoreHeaders = parseHeaderList(cfg.Header.IgnoreHeaders, cfg.Header.CaseInsensitive)
+		s.allowHeaders = parseHeaderList(cfg.Header.AllowHeaders, cfg.Header.CaseInsensitive)
+	} else {
+		s.ignoreHeaders = nil
+		s.allowHeaders = nil
+	}
 }
 
 // RegisterRoutes registers routes with the given router for MCP servers

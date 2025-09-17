@@ -182,7 +182,15 @@ func run() {
 	}
 
 	// Create server instance
-	server, err := core.NewServer(logger, cfg.Port, store, sessionStore, a, cfg.Forward, cfg.Tracing.Capture)
+    server, err := core.NewServer(
+        logger,
+        cfg.Port,
+        store,
+        sessionStore,
+        a,
+        core.WithForwardConfig(cfg.Forward),
+        core.WithTraceCapture(cfg.Tracing.Capture),
+    )
 	if err != nil {
 		logger.Fatal("Failed to create server", zap.Error(err))
 	}
