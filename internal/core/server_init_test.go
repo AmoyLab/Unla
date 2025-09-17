@@ -40,7 +40,7 @@ func TestServer_RegisterRoutes_And_Basics(t *testing.T) {
 	tplPath := filepath.Join("assets", "templates", "base.tmpl")
 	_ = os.WriteFile(tplPath, []byte("{{ define \"base\" }}ok{{ end }}"), 0o644)
 
-	s, err := NewServer(logger, 0, st, sess, a, config.ForwardConfig{})
+	s, err := NewServer(logger, 0, st, sess, a, WithForwardConfig(config.ForwardConfig{}))
 	if err != nil {
 		t.Fatalf("new server: %v", err)
 	}
