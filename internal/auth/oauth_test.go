@@ -204,8 +204,8 @@ func TestRegister_And_Revoke_And_ValidateToken(t *testing.T) {
 	tok2 := &storage.Token{AccessToken: "exp", ExpiresAt: time.Now().Add(-1 * time.Second).Unix()}
 	assert.NoError(t, o.store.SaveToken(context.Background(), tok2))
 	err = o.ValidateToken(context.Background(), "exp")
-	// Underlying store returns invalid_grant for expired token fetch
-	assert.ErrorIs(t, err, errorx.ErrInvalidGrant)
+	// Underlying store returns token_expired for expired token fetch
+	assert.ErrorIs(t, err, errorx.ErrTokenExpired)
 
 	// Revoke
 	form := url.Values{}
@@ -214,4 +214,63 @@ func TestRegister_And_Revoke_And_ValidateToken(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	_ = r.ParseForm()
 	assert.NoError(t, o.Revoke(context.Background(), r))
+}
+
+// Test edge cases for authorization code expiry and clientID validation
+func TestToken_AuthorizationCode_ExpiryAndClientIDValidation(t *testing.T) {
+	o := newTestOAuth(t)
+	mustCreateClient(t, o.store, "cli-x", "sec-x", "http://app/cb")
+
+	cases := []struct {
+		name      string
+		codeSetup func(*storage.AuthorizationCode)
+		clientID  string
+		expectErr error
+	}{
+		{
+			name: "ExpiredAuthorizationCode",
+			codeSetup: func(ac *storage.AuthorizationCode) {
+				ac.ExpiresAt = time.Now().Add(-1 * time.Minute).Unix() // expired
+			},
+			clientID:  "cli-x",
+			expectErr: errorx.ErrAuthorizationCodeExpired,
+		},
+		{
+			name: "WrongClientID",
+			codeSetup: func(ac *storage.AuthorizationCode) {
+				// No expiry (valid)
+				ac.ExpiresAt = time.Now().Add(10 * time.Minute).Unix()
+				ac.ClientID = "not-cli-x" // wrong client!
+			},
+			clientID:  "cli-x",
+			expectErr: errorx.ErrInvalidClient,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			authCode := &storage.AuthorizationCode{
+				Code:        "testcode-" + tc.name,
+				ClientID:    "cli-x",
+				RedirectURI: "http://app/cb",
+				Scope:       []string{"openid"},
+				ExpiresAt:   time.Now().Add(10 * time.Minute).Unix(),
+			}
+			tc.codeSetup(authCode)
+			assert.NoError(t, o.store.SaveAuthorizationCode(context.Background(), authCode))
+
+			form := url.Values{}
+			form.Set("grant_type", "authorization_code")
+			form.Set("client_id", tc.clientID)
+			form.Set("client_secret", "sec-x")
+			form.Set("code", authCode.Code)
+			form.Set("redirect_uri", "http://app/cb")
+			req, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			_ = req.ParseForm()
+
+			_, err := o.Token(context.Background(), req)
+			assert.ErrorIs(t, err, tc.expectErr)
+		})
+	}
 }

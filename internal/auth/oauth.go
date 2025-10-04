@@ -266,7 +266,12 @@ func (s *oauth) handleAuthorizationCodeGrant(ctx context.Context, r *http.Reques
 	// Get authorization code
 	authCode, err := s.store.GetAuthorizationCode(ctx, code)
 	if err != nil {
-		return nil, errorx.ErrInvalidGrant
+		return nil, err
+	}
+
+	// Validate client ID
+	if authCode.ClientID != client.ID {
+		return nil, errorx.ErrInvalidClient
 	}
 
 	// Validate redirect URI

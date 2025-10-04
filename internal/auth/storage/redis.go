@@ -154,7 +154,7 @@ func (s *RedisStorage) GetAuthorizationCode(ctx context.Context, code string) (*
 
 	if authCode.ExpiresAt < time.Now().Unix() {
 		s.client.Del(ctx, authorizationCodePrefix+code)
-		return nil, errorx.ErrInvalidGrant
+		return nil, errorx.ErrAuthorizationCodeExpired
 	}
 
 	return &authCode, nil
@@ -202,7 +202,7 @@ func (s *RedisStorage) GetToken(ctx context.Context, accessToken string) (*Token
 
 	if token.ExpiresAt < time.Now().Unix() {
 		s.client.Del(ctx, tokenPrefix+accessToken)
-		return nil, errorx.ErrInvalidGrant
+		return nil, errorx.ErrTokenExpired
 	}
 
 	return &token, nil

@@ -93,16 +93,26 @@ func (s *MemoryStorage) SaveAuthorizationCode(ctx context.Context, code *Authori
 // GetAuthorizationCode retrieves an authorization code
 func (s *MemoryStorage) GetAuthorizationCode(ctx context.Context, code string) (*AuthorizationCode, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
+	authCode, ok := s.authorizationCodes[code]
+	s.mu.RUnlock()
 
-	if authCode, ok := s.authorizationCodes[code]; ok {
-		if authCode.ExpiresAt < time.Now().Unix() {
-			delete(s.authorizationCodes, code)
-			return nil, errorx.ErrInvalidGrant
-		}
-		return authCode, nil
+	if !ok {
+		return nil, errorx.ErrInvalidGrant
 	}
-	return nil, errorx.ErrInvalidGrant
+
+	// Check expiry
+	if authCode.ExpiresAt < time.Now().Unix() {
+		// Expired - need to delete it, so acquire write lock
+		s.mu.Lock()
+		// Double-check it still exists and is still expired (TOCTOU protection)
+		if ac, exists := s.authorizationCodes[code]; exists && ac.ExpiresAt < time.Now().Unix() {
+			delete(s.authorizationCodes, code)
+		}
+		s.mu.Unlock()
+		return nil, errorx.ErrAuthorizationCodeExpired
+	}
+
+	return authCode, nil
 }
 
 // DeleteAuthorizationCode deletes an authorization code
@@ -131,16 +141,26 @@ func (s *MemoryStorage) SaveToken(ctx context.Context, token *Token) error {
 // GetToken retrieves a token
 func (s *MemoryStorage) GetToken(ctx context.Context, accessToken string) (*Token, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
+	token, ok := s.tokens[accessToken]
+	s.mu.RUnlock()
 
-	if token, ok := s.tokens[accessToken]; ok {
-		if token.ExpiresAt < time.Now().Unix() {
-			delete(s.tokens, accessToken)
-			return nil, errorx.ErrInvalidGrant
-		}
-		return token, nil
+	if !ok {
+		return nil, errorx.ErrInvalidGrant
 	}
-	return nil, errorx.ErrInvalidGrant
+
+	// Check expiry
+	if token.ExpiresAt < time.Now().Unix() {
+		// Expired - need to delete it, so acquire write lock
+		s.mu.Lock()
+		// Double-check it still exists and is still expired (TOCTOU protection)
+		if t, exists := s.tokens[accessToken]; exists && t.ExpiresAt < time.Now().Unix() {
+			delete(s.tokens, accessToken)
+		}
+		s.mu.Unlock()
+		return nil, errorx.ErrTokenExpired
+	}
+
+	return token, nil
 }
 
 // DeleteToken deletes a token

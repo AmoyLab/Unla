@@ -47,7 +47,7 @@ func TestMemoryStorage_AuthorizationCode_Flow(t *testing.T) {
 	code2 := &AuthorizationCode{Code: "code2", ExpiresAt: time.Now().Add(-1 * time.Second).Unix()}
 	assert.NoError(t, s.SaveAuthorizationCode(ctx, code2))
 	_, err = s.GetAuthorizationCode(ctx, "code2")
-	assert.ErrorIs(t, err, errorx.ErrInvalidGrant)
+	assert.ErrorIs(t, err, errorx.ErrAuthorizationCodeExpired)
 }
 
 func TestMemoryStorage_Token_Flow(t *testing.T) {
@@ -67,7 +67,7 @@ func TestMemoryStorage_Token_Flow(t *testing.T) {
 	tok2 := &Token{AccessToken: "t2", ClientID: "c2", ExpiresAt: time.Now().Add(-1 * time.Second).Unix()}
 	assert.NoError(t, s.SaveToken(ctx, tok2))
 	_, err = s.GetToken(ctx, "t2")
-	assert.ErrorIs(t, err, errorx.ErrInvalidGrant)
+	assert.ErrorIs(t, err, errorx.ErrTokenExpired)
 
 	// DeleteTokensByClientID
 	_ = s.SaveToken(ctx, &Token{AccessToken: "t3", ClientID: "c3", ExpiresAt: time.Now().Add(5 * time.Second).Unix()})
