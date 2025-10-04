@@ -4,6 +4,7 @@
 
 [![English](https://img.shields.io/badge/English-Click-yellow)](./README.md)
 [![简体中文](https://img.shields.io/badge/简体中文-点击查看-orange)](docs/README.zh-CN.md)
+[![繁體中文](https://img.shields.io/badge/繁體中文-點擊查看-blue)](docs/README.zh-TW.md)
 [![Release](https://img.shields.io/github/v/release/mcp-ecosystem/mcp-gateway)](https://github.com/amoylab/unla/releases)
 [![Docs](https://img.shields.io/badge/Docs-View%20Online-blue)](https://docs.unla.amoylab.com)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mcp-ecosystem/mcp-gateway)
