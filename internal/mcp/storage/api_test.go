@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,7 +29,7 @@ func TestAPIStore_Get_And_List_Basic(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Get returns struct unmarshaled from response
-	got, err := store.Get(nil, "t1", "n1")
+	got, err := store.Get(context.Background(), "t1", "n1")
 	assert.NoError(t, err)
 	if assert.NotNil(t, got) {
 		assert.Equal(t, "n1", got.Name)
@@ -42,7 +43,7 @@ func TestAPIStore_Get_And_List_Basic(t *testing.T) {
 		_, _ = w.Write([]byte(listResp))
 	})
 
-	lst, err := store.List(nil)
+	lst, err := store.List(context.Background())
 	assert.NoError(t, err)
 	if assert.Len(t, lst, 1) {
 		assert.Equal(t, "n2", lst[0].Name)
@@ -61,7 +62,7 @@ func TestAPIStore_Get_WithJSONPath(t *testing.T) {
 	store, err := NewAPIStore(zap.NewNop(), srv.URL, "data.config", 2*time.Second)
 	assert.NoError(t, err)
 
-	got, err := store.Get(nil, "t3", "n3")
+	got, err := store.Get(context.Background(), "t3", "n3")
 	assert.NoError(t, err)
 	if assert.NotNil(t, got) {
 		assert.Equal(t, "n3", got.Name)
@@ -79,7 +80,7 @@ func TestAPIStore_JSONPathMissing_ReturnsError(t *testing.T) {
 	store, err := NewAPIStore(zap.NewNop(), srv.URL, "data.config", 2*time.Second)
 	assert.NoError(t, err)
 
-	got, err := store.Get(nil, "t", "n")
+	got, err := store.Get(context.Background(), "t", "n")
 	assert.Error(t, err)
 	assert.Nil(t, got)
 }
@@ -94,7 +95,7 @@ func TestAPIStore_RequestTimeout(t *testing.T) {
 	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", 10*time.Millisecond)
 	assert.NoError(t, err)
 
-	got, err := store.Get(nil, "t", "n")
+	got, err := store.Get(context.Background(), "t", "n")
 	assert.Error(t, err)
 	assert.Nil(t, got)
 }
@@ -109,7 +110,7 @@ func TestAPIStore_ListUpdated_DelegatesToList(t *testing.T) {
 	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", time.Second)
 	assert.NoError(t, err)
 
-	lst, err := store.ListUpdated(nil, time.Now().Add(-time.Hour))
+	lst, err := store.ListUpdated(context.Background(), time.Now().Add(-time.Hour))
 	assert.NoError(t, err)
 	if assert.Len(t, lst, 2) {
 		names := []string{lst[0].Name, lst[1].Name}
@@ -129,15 +130,15 @@ func TestAPIStore_RWNoops(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Read-only behavior
-	assert.NoError(t, store.Create(nil, &config.MCPConfig{}))
-	assert.NoError(t, store.Update(nil, &config.MCPConfig{}))
-	assert.NoError(t, store.Delete(nil, "t", "n"))
-	v, err := store.GetVersion(nil, "t", "n", 1)
+	assert.NoError(t, store.Create(context.Background(), &config.MCPConfig{}))
+	assert.NoError(t, store.Update(context.Background(), &config.MCPConfig{}))
+	assert.NoError(t, store.Delete(context.Background(), "t", "n"))
+	v, err := store.GetVersion(context.Background(), "t", "n", 1)
 	assert.NoError(t, err)
 	assert.Nil(t, v)
-	vs, err := store.ListVersions(nil, "t", "n")
+	vs, err := store.ListVersions(context.Background(), "t", "n")
 	assert.NoError(t, err)
 	assert.Nil(t, vs)
-	assert.NoError(t, store.SetActiveVersion(nil, "t", "n", 1))
-	assert.NoError(t, store.DeleteVersion(nil, "t", "n", 1))
+	assert.NoError(t, store.SetActiveVersion(context.Background(), "t", "n", 1))
+	assert.NoError(t, store.DeleteVersion(context.Background(), "t", "n", 1))
 }
