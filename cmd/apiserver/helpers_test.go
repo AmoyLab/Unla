@@ -85,7 +85,8 @@ func TestInitRouter_Constructs(t *testing.T) {
 		Logger:     config.LoggerConfig{},
 		Storage:    config.StorageConfig{Type: "db", Database: config.DatabaseConfig{Type: "sqlite", DBName: storeDB}},
 		Notifier:   config.NotifierConfig{Type: string(notifier.TypeSignal), Role: string(config.RoleReceiver), Signal: config.SignalConfig{PID: pidPath}},
-		JWT:        config.JWTConfig{SecretKey: "secret"},
+		JWT:        config.JWTConfig{SecretKey: "this-is-a-very-long-secret-key-for-testing-purposes-only", Duration: 3600000000000},
+		Auth:       config.AuthConfig{},
 	}
 
 	r := initRouter(ctx, db, st, ntf, cfg, lg)
