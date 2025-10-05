@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
 	"time"
 
 	jsvc "github.com/amoylab/unla/internal/auth/jwt"
@@ -27,7 +26,10 @@ func performRequest(h http.HandlerFunc, headers map[string]string) *httptest.Res
 	return w
 }
 
-var hdrSvc = jsvc.NewService(jsvc.Config{SecretKey: "k", Duration: time.Hour})
+var hdrSvc = func() *jsvc.Service {
+	s, _ := jsvc.NewService(jsvc.Config{SecretKey: "this-is-a-very-long-secret-key-for-testing", Duration: time.Hour})
+	return s
+}()
 
 func TestJWTAuthMiddleware_MissingHeader(t *testing.T) {
 	w := performRequest(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) }, nil)

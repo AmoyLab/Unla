@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/amoylab/unla/internal/auth"
 	jsvc "github.com/amoylab/unla/internal/auth/jwt"
@@ -20,6 +21,7 @@ func (f *fakeExtOAuth) GetAuthURL(state string) string { return f.url }
 func (f *fakeExtOAuth) ExchangeCode(_ context.Context, _ string) (*auth.ExternalTokenResponse, error) {
 	return nil, nil
 }
+
 func (f *fakeExtOAuth) GetUserInfo(_ context.Context, _ string) (*auth.ExternalUserInfo, error) {
 	return nil, nil
 }
@@ -33,9 +35,11 @@ func (f *fakeAuth) ServerMetadata(r *http.Request) map[string]interface{} { retu
 func (f *fakeAuth) Authorize(ctx context.Context, r *http.Request) (*auth.AuthorizationResponse, error) {
 	return nil, nil
 }
+
 func (f *fakeAuth) Token(ctx context.Context, r *http.Request) (*auth.TokenResponse, error) {
 	return nil, nil
 }
+
 func (f *fakeAuth) Register(ctx context.Context, r *http.Request) (*auth.ClientRegistrationResponse, error) {
 	return nil, nil
 }
@@ -50,7 +54,7 @@ func (f *fakeAuth) IsGitHubOAuthEnabled() bool                            { retu
 
 func TestGoogleAndGitHubLogin_And_Providers(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	svc := jsvc.NewService(jsvc.Config{SecretKey: "k"})
+	svc, _ := jsvc.NewService(jsvc.Config{SecretKey: "this-is-a-very-long-secret-key-for-testing", Duration: time.Hour})
 
 	// Disabled -> 400
 	h := NewOAuthHandler(nil, svc, &fakeAuth{}, zap.NewNop())

@@ -8,7 +8,8 @@ import (
 )
 
 func TestJWTService_GenerateAndValidate(t *testing.T) {
-	s := NewService(Config{SecretKey: "secret", Duration: time.Hour})
+	s, err := NewService(Config{SecretKey: "this-is-a-very-long-secret-key-for-testing", Duration: time.Hour})
+	assert.NoError(t, err)
 	tok, err := s.GenerateToken(42, "alice", "admin")
 	assert.NoError(t, err)
 	claims, err := s.ValidateToken(tok)
@@ -20,17 +21,42 @@ func TestJWTService_GenerateAndValidate(t *testing.T) {
 	}
 }
 
-func TestJWTService_ExpiredAndInvalid(t *testing.T) {
-	s := NewService(Config{SecretKey: "secret", Duration: -time.Second})
+func TestJWTService_ExpiredToken(t *testing.T) {
+	s, err := NewService(Config{SecretKey: "this-is-a-very-long-secret-key-for-testing", Duration: time.Nanosecond})
+	assert.NoError(t, err)
 	tok, err := s.GenerateToken(1, "bob", "user")
 	assert.NoError(t, err)
-	// Token should be expired immediately
+	time.Sleep(time.Millisecond)
 	claims, err := s.ValidateToken(tok)
 	assert.Nil(t, claims)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrExpiredToken)
+}
 
-	// Invalid token string
-	claims, err = s.ValidateToken("not-a-token")
+func TestJWTService_InvalidToken(t *testing.T) {
+	s, err := NewService(Config{SecretKey: "this-is-a-very-long-secret-key-for-testing", Duration: time.Hour})
+	assert.NoError(t, err)
+
+	claims, err := s.ValidateToken("not-a-token")
 	assert.Nil(t, claims)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrInvalidToken)
+}
+
+func TestJWTService_ValidationErrors(t *testing.T) {
+	t.Run("empty secret key", func(t *testing.T) {
+		s, err := NewService(Config{SecretKey: "", Duration: time.Hour})
+		assert.ErrorIs(t, err, ErrEmptySecretKey)
+		assert.Nil(t, s)
+	})
+
+	t.Run("weak secret key", func(t *testing.T) {
+		s, err := NewService(Config{SecretKey: "short", Duration: time.Hour})
+		assert.ErrorIs(t, err, ErrWeakSecretKey)
+		assert.Nil(t, s)
+	})
+
+	t.Run("invalid duration", func(t *testing.T) {
+		s, err := NewService(Config{SecretKey: "this-is-a-very-long-secret-key-for-testing", Duration: 0})
+		assert.ErrorIs(t, err, ErrInvalidDuration)
+		assert.Nil(t, s)
+	})
 }

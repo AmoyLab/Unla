@@ -8,8 +8,12 @@ import (
 )
 
 var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("token has expired")
+	ErrInvalidToken     = errors.New("invalid token")
+	ErrExpiredToken     = errors.New("token has expired")
+	ErrInvalidAlgorithm = errors.New("invalid signing algorithm")
+	ErrEmptySecretKey   = errors.New("secret key cannot be empty")
+	ErrWeakSecretKey    = errors.New("secret key must be at least 32 characters")
+	ErrInvalidDuration  = errors.New("duration must be positive")
 )
 
 // Claims represents the JWT claims
@@ -32,10 +36,19 @@ type Service struct {
 }
 
 // NewService creates a new JWT service
-func NewService(config Config) *Service {
+func NewService(config Config) (*Service, error) {
+	if config.SecretKey == "" {
+		return nil, ErrEmptySecretKey
+	}
+	if len(config.SecretKey) < 32 {
+		return nil, ErrWeakSecretKey
+	}
+	if config.Duration <= 0 {
+		return nil, ErrInvalidDuration
+	}
 	return &Service{
 		config: config,
-	}
+	}, nil
 }
 
 // GenerateToken generates a new JWT token
@@ -58,9 +71,11 @@ func (s *Service) GenerateToken(userID uint, username string, role string) (stri
 // ValidateToken validates a JWT token
 func (s *Service) ValidateToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrInvalidAlgorithm
+		}
 		return []byte(s.config.SecretKey), nil
 	})
-
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, ErrExpiredToken

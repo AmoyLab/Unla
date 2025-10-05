@@ -151,10 +151,13 @@ func initRouter(ctx context.Context, db database.Database, store storage.Store, 
 	}
 
 	// Initialize auth services
-	jwtService := jwt.NewService(jwt.Config{
+	jwtService, err := jwt.NewService(jwt.Config{
 		SecretKey: cfg.JWT.SecretKey,
 		Duration:  cfg.JWT.Duration,
 	})
+	if err != nil {
+		logger.Fatal("Failed to initialize JWT service", zap.Error(err))
+	}
 
 	// Initialize OAuth auth service
 	authService, err := auth.NewAuth(logger, cfg.Auth)

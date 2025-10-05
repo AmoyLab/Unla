@@ -8,7 +8,6 @@ import (
 
 	"github.com/amoylab/unla/internal/apiserver/database"
 	"github.com/amoylab/unla/internal/auth"
-	jsvc "github.com/amoylab/unla/internal/auth/jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -28,6 +27,7 @@ func (m *oauthDBMock) SaveMessage(context.Context, *database.Message) error { re
 func (m *oauthDBMock) GetMessages(context.Context, string) ([]*database.Message, error) {
 	return nil, nil
 }
+
 func (m *oauthDBMock) GetMessagesWithPagination(context.Context, string, int, int) ([]*database.Message, error) {
 	return nil, nil
 }
@@ -45,6 +45,7 @@ func (m *oauthDBMock) CreateUser(ctx context.Context, u *database.User) error {
 	}
 	return nil
 }
+
 func (m *oauthDBMock) GetUserByUsername(context.Context, string) (*database.User, error) {
 	return m.user, m.findErr
 }
@@ -58,6 +59,7 @@ func (m *oauthDBMock) CreateTenant(ctx context.Context, t *database.Tenant) erro
 	}
 	return nil
 }
+
 func (m *oauthDBMock) GetTenantByName(context.Context, string) (*database.Tenant, error) {
 	return nil, nil
 }
@@ -73,6 +75,7 @@ func (m *oauthDBMock) RemoveUserFromTenant(context.Context, uint, uint) error { 
 func (m *oauthDBMock) GetUserTenants(context.Context, uint) ([]*database.Tenant, error) {
 	return nil, nil
 }
+
 func (m *oauthDBMock) GetTenantUsers(context.Context, uint) ([]*database.User, error) {
 	return nil, nil
 }
@@ -87,7 +90,7 @@ func (m *oauthDBMock) SaveSystemPrompt(context.Context, uint, string) error  { r
 type noopAuth struct{ auth.Auth }
 
 func TestOAuthHelper_generateTenantName(t *testing.T) {
-	h := NewOAuthHandler(&oauthDBMock{}, jsvc.NewService(jsvc.Config{SecretKey: "k", Duration: time.Hour}), &noopAuth{}, zap.NewNop())
+	h := NewOAuthHandler(&oauthDBMock{}, mustNewJWTService(), &noopAuth{}, zap.NewNop())
 	name, err := h.generateTenantName("user@example.com")
 	assert.NoError(t, err)
 	// prefix should be username_ and suffix 4 chars
@@ -95,7 +98,7 @@ func TestOAuthHelper_generateTenantName(t *testing.T) {
 }
 
 func TestOAuthHelper_validateState(t *testing.T) {
-	h := NewOAuthHandler(&oauthDBMock{}, jsvc.NewService(jsvc.Config{SecretKey: "k", Duration: time.Hour}), &noopAuth{}, zap.NewNop())
+	h := NewOAuthHandler(&oauthDBMock{}, mustNewJWTService(), &noopAuth{}, zap.NewNop())
 	// Insert a state that expires in the future
 	h.states["abc"] = time.Now().Add(1 * time.Minute)
 	assert.True(t, h.validateState("abc"))
@@ -106,7 +109,7 @@ func TestOAuthHelper_validateState(t *testing.T) {
 func TestOAuthHelper_handleOAuthUser_ExistingUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := &oauthDBMock{user: &database.User{ID: 1, Username: "u", Role: database.RoleNormal, IsActive: true}}
-	h := NewOAuthHandler(db, jsvc.NewService(jsvc.Config{SecretKey: "k", Duration: time.Hour}), &noopAuth{}, zap.NewNop())
+	h := NewOAuthHandler(db, mustNewJWTService(), &noopAuth{}, zap.NewNop())
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -122,7 +125,7 @@ func TestOAuthHelper_handleOAuthUser_ExistingUser(t *testing.T) {
 func TestOAuthHelper_handleOAuthUser_CreateNew(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := &oauthDBMock{user: nil, findErr: assert.AnError}
-	h := NewOAuthHandler(db, jsvc.NewService(jsvc.Config{SecretKey: "k", Duration: time.Hour}), &noopAuth{}, zap.NewNop())
+	h := NewOAuthHandler(db, mustNewJWTService(), &noopAuth{}, zap.NewNop())
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

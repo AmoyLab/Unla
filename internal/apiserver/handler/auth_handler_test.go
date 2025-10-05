@@ -69,7 +69,7 @@ func TestAuthHandler_Login_And_ChangePassword(t *testing.T) {
 	hpwd, _ := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
 	db := &authDBMock{user: &database.User{ID: 1, Username: "u", Password: string(hpwd), Role: database.RoleAdmin, IsActive: true, CreatedAt: time.Now(), UpdatedAt: time.Now()}}
 
-	jwtSvc := jsvc.NewService(jsvc.Config{SecretKey: "k", Duration: time.Hour})
+	jwtSvc, _ := jsvc.NewService(jsvc.Config{SecretKey: "this-is-a-very-long-secret-key-for-testing", Duration: time.Hour})
 	h := NewHandler(db, jwtSvc, &config.MCPGatewayConfig{}, zap.NewNop())
 
 	// Login
