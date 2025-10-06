@@ -61,7 +61,7 @@
     "js-yaml": "^4.1.0",
     "katex": "^0.16.22",
     "lucide-react": "^0.522.0",
-    "monaco-editor": "^0.52.2",
+    "monaco-editor": "^0.53.0",
     "monaco-yaml": "^5.4.0",
     "react": "^18.3.1",
     "react-diff-viewer-continued": "^3.4.0",
