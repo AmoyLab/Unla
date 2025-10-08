@@ -274,3 +274,169 @@ func TestToken_AuthorizationCode_ExpiryAndClientIDValidation(t *testing.T) {
 		})
 	}
 }
+
+// TestPKCE_CodeVerifier tests PKCE flow with code verifier validation
+func TestPKCE_CodeVerifier(t *testing.T) {
+	o := newTestOAuth(t)
+	mustCreateClient(t, o.store, "cli-pkce", "sec-pkce", "http://app/cb")
+
+	t.Run("S256_Success", func(t *testing.T) {
+		// Generate code verifier and challenge
+		codeVerifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+		codeChallenge, err := computeCodeChallenge(codeVerifier, "S256")
+		assert.NoError(t, err)
+
+		// Authorize with code challenge
+		u := &url.URL{Path: "/authorize"}
+		q := u.Query()
+		q.Set("client_id", "cli-pkce")
+		q.Set("redirect_uri", "http://app/cb")
+		q.Set("response_type", "code")
+		q.Set("code_challenge", codeChallenge)
+		q.Set("code_challenge_method", "S256")
+		u.RawQuery = q.Encode()
+		ar, err := o.Authorize(context.Background(), &http.Request{URL: u})
+		assert.NoError(t, err)
+		assert.NotEmpty(t, ar.Code)
+
+		// Exchange code with correct verifier
+		form := url.Values{}
+		form.Set("grant_type", "authorization_code")
+		form.Set("client_id", "cli-pkce")
+		form.Set("client_secret", "sec-pkce")
+		form.Set("code", ar.Code)
+		form.Set("redirect_uri", "http://app/cb")
+		form.Set("code_verifier", codeVerifier)
+		req, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		_ = req.ParseForm()
+		tr, err := o.Token(context.Background(), req)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, tr.AccessToken)
+	})
+
+	t.Run("S256_WrongVerifier", func(t *testing.T) {
+		// Generate code verifier and challenge
+		codeVerifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+		codeChallenge, err := computeCodeChallenge(codeVerifier, "S256")
+		assert.NoError(t, err)
+
+		// Authorize with code challenge
+		u := &url.URL{Path: "/authorize"}
+		q := u.Query()
+		q.Set("client_id", "cli-pkce")
+		q.Set("redirect_uri", "http://app/cb")
+		q.Set("response_type", "code")
+		q.Set("code_challenge", codeChallenge)
+		q.Set("code_challenge_method", "S256")
+		u.RawQuery = q.Encode()
+		ar, err := o.Authorize(context.Background(), &http.Request{URL: u})
+		assert.NoError(t, err)
+
+		// Exchange code with WRONG verifier
+		form := url.Values{}
+		form.Set("grant_type", "authorization_code")
+		form.Set("client_id", "cli-pkce")
+		form.Set("client_secret", "sec-pkce")
+		form.Set("code", ar.Code)
+		form.Set("redirect_uri", "http://app/cb")
+		form.Set("code_verifier", "wrong-verifier-12345678901234567890123")
+		req, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		_ = req.ParseForm()
+		_, err = o.Token(context.Background(), req)
+		assert.ErrorIs(t, err, errorx.ErrInvalidGrant)
+	})
+
+	t.Run("S256_MissingVerifier", func(t *testing.T) {
+		// Generate code challenge
+		codeVerifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+		codeChallenge, err := computeCodeChallenge(codeVerifier, "S256")
+		assert.NoError(t, err)
+
+		// Authorize with code challenge
+		u := &url.URL{Path: "/authorize"}
+		q := u.Query()
+		q.Set("client_id", "cli-pkce")
+		q.Set("redirect_uri", "http://app/cb")
+		q.Set("response_type", "code")
+		q.Set("code_challenge", codeChallenge)
+		q.Set("code_challenge_method", "S256")
+		u.RawQuery = q.Encode()
+		ar, err := o.Authorize(context.Background(), &http.Request{URL: u})
+		assert.NoError(t, err)
+
+		// Exchange code WITHOUT verifier
+		form := url.Values{}
+		form.Set("grant_type", "authorization_code")
+		form.Set("client_id", "cli-pkce")
+		form.Set("client_secret", "sec-pkce")
+		form.Set("code", ar.Code)
+		form.Set("redirect_uri", "http://app/cb")
+		// No code_verifier provided
+		req, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		_ = req.ParseForm()
+		_, err = o.Token(context.Background(), req)
+		assert.ErrorIs(t, err, errorx.ErrInvalidRequest)
+	})
+
+	t.Run("Plain_Success", func(t *testing.T) {
+		// Use plain method
+		codeVerifier := "plain-verifier-1234567890"
+		codeChallenge := codeVerifier // plain method
+
+		// Authorize
+		u := &url.URL{Path: "/authorize"}
+		q := u.Query()
+		q.Set("client_id", "cli-pkce")
+		q.Set("redirect_uri", "http://app/cb")
+		q.Set("response_type", "code")
+		q.Set("code_challenge", codeChallenge)
+		q.Set("code_challenge_method", "plain")
+		u.RawQuery = q.Encode()
+		ar, err := o.Authorize(context.Background(), &http.Request{URL: u})
+		assert.NoError(t, err)
+
+		// Exchange with correct verifier
+		form := url.Values{}
+		form.Set("grant_type", "authorization_code")
+		form.Set("client_id", "cli-pkce")
+		form.Set("client_secret", "sec-pkce")
+		form.Set("code", ar.Code)
+		form.Set("redirect_uri", "http://app/cb")
+		form.Set("code_verifier", codeVerifier)
+		req, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		_ = req.ParseForm()
+		tr, err := o.Token(context.Background(), req)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, tr.AccessToken)
+	})
+
+	t.Run("NoPKCE_StillWorks", func(t *testing.T) {
+		// Authorize without PKCE
+		u := &url.URL{Path: "/authorize"}
+		q := u.Query()
+		q.Set("client_id", "cli-pkce")
+		q.Set("redirect_uri", "http://app/cb")
+		q.Set("response_type", "code")
+		u.RawQuery = q.Encode()
+		ar, err := o.Authorize(context.Background(), &http.Request{URL: u})
+		assert.NoError(t, err)
+
+		// Exchange without verifier (backward compatibility)
+		form := url.Values{}
+		form.Set("grant_type", "authorization_code")
+		form.Set("client_id", "cli-pkce")
+		form.Set("client_secret", "sec-pkce")
+		form.Set("code", ar.Code)
+		form.Set("redirect_uri", "http://app/cb")
+		req, _ := http.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		_ = req.ParseForm()
+		tr, err := o.Token(context.Background(), req)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, tr.AccessToken)
+	})
+}

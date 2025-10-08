@@ -36,12 +36,14 @@ type Client struct {
 
 // AuthorizationCode represents an authorization code
 type AuthorizationCode struct {
-	Code        string   `json:"code"`
-	ClientID    string   `json:"client_id"`
-	RedirectURI string   `json:"redirect_uri"`
-	Scope       []string `json:"scope"`
-	ExpiresAt   int64    `json:"expires_at"`
-	CreatedAt   int64    `json:"created_at"`
+	Code                string   `json:"code"`
+	ClientID            string   `json:"client_id"`
+	RedirectURI         string   `json:"redirect_uri"`
+	Scope               []string `json:"scope"`
+	CodeChallenge       string   `json:"code_challenge,omitempty"`
+	CodeChallengeMethod string   `json:"code_challenge_method,omitempty"`
+	ExpiresAt           int64    `json:"expires_at"`
+	CreatedAt           int64    `json:"created_at"`
 }
 
 // Token represents an OAuth2 token

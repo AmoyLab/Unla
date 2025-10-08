@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/amoylab/unla/internal/auth/storage"
+	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/common/errorx"
 
-	"github.com/amoylab/unla/internal/common/config"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/sha3"
+	"golang.org/x/oauth2"
 )
 
 // oauth implements the auth.Auth interface
@@ -128,11 +128,13 @@ func (s *oauth) Authorize(ctx context.Context, r *http.Request) (*AuthorizationR
 
 	// Save authorization code
 	authCode := &storage.AuthorizationCode{
-		Code:        code,
-		ClientID:    clientID,
-		RedirectURI: redirectURI,
-		Scope:       strings.Split(scope, " "),
-		ExpiresAt:   expiresAt,
+		Code:                code,
+		ClientID:            clientID,
+		RedirectURI:         redirectURI,
+		Scope:               strings.Split(scope, " "),
+		CodeChallenge:       codeChallenge,
+		CodeChallengeMethod: codeChallengeMethod,
+		ExpiresAt:           expiresAt,
 	}
 	if err := s.store.SaveAuthorizationCode(ctx, authCode); err != nil {
 		return nil, err
@@ -280,8 +282,21 @@ func (s *oauth) handleAuthorizationCodeGrant(ctx context.Context, r *http.Reques
 	}
 
 	// Validate code verifier if code challenge was provided
-	if codeVerifier != "" {
-		// TODO: Implement PKCE validation
+	if authCode.CodeChallenge != "" {
+		if codeVerifier == "" {
+			return nil, errorx.ErrInvalidRequest
+		}
+
+		// Compute challenge from verifier
+		computedChallenge, err := computeCodeChallenge(codeVerifier, authCode.CodeChallengeMethod)
+		if err != nil {
+			return nil, err
+		}
+
+		// Verify the challenge matches
+		if computedChallenge != authCode.CodeChallenge {
+			return nil, errorx.ErrInvalidGrant
+		}
 	}
 
 	// Generate access token
@@ -410,9 +425,7 @@ func computeCodeChallenge(codeVerifier string, method string) (string, error) {
 	case "plain":
 		return codeVerifier, nil
 	case "S256":
-		h := sha3.New256()
-		h.Write([]byte(codeVerifier))
-		return base64.RawURLEncoding.EncodeToString(h.Sum(nil)), nil
+		return oauth2.S256ChallengeFromVerifier(codeVerifier), nil
 	default:
 		return "", errorx.ErrInvalidRequest
 	}
