@@ -73,6 +73,7 @@ type (
 		ResponseBody string            `json:"responseBody" yaml:"responseBody"`
 		InputSchema  map[string]any    `json:"inputSchema,omitempty" yaml:"inputSchema,omitempty"`
 		Annotations  map[string]any    `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+		Meta         map[string]any    `json:"meta,omitempty" yaml:"meta,omitempty"`
 	}
 
 	MCPServerConfig struct {
@@ -207,6 +208,7 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 			Required:   required,
 		},
 		Annotations: annotations,
+		Meta:        t.Meta,
 	}
 }
 

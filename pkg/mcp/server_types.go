@@ -59,6 +59,9 @@ type (
 		InputSchema ToolInputSchema `json:"inputSchema"`
 		// Annotations for the tool
 		Annotations *ToolAnnotations `json:"annotations,omitempty"`
+		// Meta information for the tool
+		// https://github.com/modelcontextprotocol/python-sdk/blob/main/src/mcp/types.py
+		Meta map[string]any `json:"_meta,omitempty"`
 	}
 
 	// https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-03-26/schema.json

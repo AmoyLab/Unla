@@ -15,11 +15,12 @@ import (
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
 
-	apptrace "github.com/amoylab/unla/pkg/trace"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
+
+	apptrace "github.com/amoylab/unla/pkg/trace"
 )
 
 // handleSSE handles SSE connections
@@ -401,6 +402,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				Description: tool.Description,
 				InputSchema: tool.InputSchema,
 				Annotations: tool.Annotations,
+				Meta:        tool.Meta,
 			}
 		}
 
