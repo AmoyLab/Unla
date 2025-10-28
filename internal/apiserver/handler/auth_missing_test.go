@@ -214,7 +214,7 @@ func TestHandler_UpdateUserTenants_Success(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPut, "/users/tenants", nil)
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, f.removedIds, uint(1)) // removed tenant 1
+	assert.Contains(t, f.removedIds, uint(1))       // removed tenant 1
 	assert.Contains(t, f.addedPairs, [2]uint{5, 3}) // added tenant 3 to user 5
 }
 

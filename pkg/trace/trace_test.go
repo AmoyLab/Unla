@@ -1,20 +1,20 @@
 package trace
 
 import (
-    "context"
-    "fmt"
-    "testing"
+	"context"
+	"fmt"
+	"testing"
 
-    "github.com/stretchr/testify/require"
-    "go.opentelemetry.io/otel"
-    "go.opentelemetry.io/otel/attribute"
-    "go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-    "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-    "go.opentelemetry.io/otel/sdk/resource"
-    sdktrace "go.opentelemetry.io/otel/sdk/trace"
-    "go.opentelemetry.io/otel/sdk/trace/tracetest"
-    "go.uber.org/zap"
-    "gopkg.in/yaml.v3"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 // helper structure for YAML decoding of StringMap
@@ -105,7 +105,7 @@ func TestInitTracing_GRPC_Normalization_And_Shutdown(t *testing.T) {
 		Protocol:    "grpc",
 		Endpoint:    "http://localhost:4317/", // will be trimmed to localhost:4317
 		Insecure:    true,
-		SamplerRate: -1, // clamp to 0
+		SamplerRate: -1,                             // clamp to 0
 		Headers:     map[string]string{"auth": "t"}, // cover grpc headers path
 	}
 
@@ -150,31 +150,31 @@ func TestInitTracing_DefaultProtocol_Empty_UsesGRPC(t *testing.T) {
 }
 
 func TestInitTracing_ResourceError_IsReturned(t *testing.T) {
-    // Override newResource to simulate a construction error
-    prev := newResource
-    newResource = func(ctx context.Context, opts ...resource.Option) (*resource.Resource, error) {
-        return nil, fmt.Errorf("boom")
-    }
-    t.Cleanup(func() { newResource = prev })
+	// Override newResource to simulate a construction error
+	prev := newResource
+	newResource = func(ctx context.Context, opts ...resource.Option) (*resource.Resource, error) {
+		return nil, fmt.Errorf("boom")
+	}
+	t.Cleanup(func() { newResource = prev })
 
-    cfg := &Config{ServiceName: "svc", Protocol: "http"}
-    shutdown, err := InitTracing(context.Background(), cfg, zap.NewNop())
-    require.Error(t, err)
-    require.Nil(t, shutdown)
+	cfg := &Config{ServiceName: "svc", Protocol: "http"}
+	shutdown, err := InitTracing(context.Background(), cfg, zap.NewNop())
+	require.Error(t, err)
+	require.Nil(t, shutdown)
 }
 
 func TestInitTracing_ExporterError_IsReturned(t *testing.T) {
-    // Override HTTP exporter constructor to simulate an error
-    prev := newOTLPTraceHTTP
-    newOTLPTraceHTTP = func(ctx context.Context, options ...otlptracehttp.Option) (*otlptrace.Exporter, error) {
-        return nil, fmt.Errorf("no exporter")
-    }
-    t.Cleanup(func() { newOTLPTraceHTTP = prev })
+	// Override HTTP exporter constructor to simulate an error
+	prev := newOTLPTraceHTTP
+	newOTLPTraceHTTP = func(ctx context.Context, options ...otlptracehttp.Option) (*otlptrace.Exporter, error) {
+		return nil, fmt.Errorf("no exporter")
+	}
+	t.Cleanup(func() { newOTLPTraceHTTP = prev })
 
-    cfg := &Config{ServiceName: "svc", Protocol: "http"}
-    shutdown, err := InitTracing(context.Background(), cfg, zap.NewNop())
-    require.Error(t, err)
-    require.Nil(t, shutdown)
+	cfg := &Config{ServiceName: "svc", Protocol: "http"}
+	shutdown, err := InitTracing(context.Background(), cfg, zap.NewNop())
+	require.Error(t, err)
+	require.Nil(t, shutdown)
 }
 
 func TestBuilder_Start_WithAttrs_End_WithInMemoryProvider(t *testing.T) {
