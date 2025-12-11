@@ -44,8 +44,8 @@ func New(cfg config.MetricsConfig) *Metrics {
 	mcpReqInfl := prometheus.NewGaugeVec(prometheus.GaugeOpts{Namespace: ns, Name: "mcp_requests_inflight"}, []string{"method"})
 	r.MustRegister(mcpReqDur, mcpReqCnt, mcpReqInfl)
 
-	toolExecCnt := prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: ns, Name: "tool_execution_total"}, []string{"tool_name"})
-	toolExecDur := prometheus.NewHistogramVec(prometheus.HistogramOpts{Namespace: ns, Name: "tool_execution_duration_seconds", Buckets: cfg.Buckets}, []string{"tool_name"})
+	toolExecCnt := prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: ns, Name: "tool_execution_total"}, []string{"tool_name", "status"})
+	toolExecDur := prometheus.NewHistogramVec(prometheus.HistogramOpts{Namespace: ns, Name: "tool_execution_duration_seconds", Buckets: cfg.Buckets}, []string{"tool_name", "status"})
 	toolExecInfl := prometheus.NewGaugeVec(prometheus.GaugeOpts{Namespace: ns, Name: "tool_execution_inflight_requests"}, []string{"tool_name"})
 	r.MustRegister(toolExecCnt, toolExecDur, toolExecInfl)
 
@@ -78,9 +78,9 @@ func (m *Metrics) ToolExecStart(toolName string) {
 	m.toolExecInfl.WithLabelValues(toolName).Inc()
 }
 
-func (m *Metrics) ToolExecDone(toolName string, since time.Time) {
-	m.toolExecCnt.WithLabelValues(toolName).Inc()
-	m.toolExecDur.WithLabelValues(toolName).Observe(time.Since(since).Seconds())
+func (m *Metrics) ToolExecDone(toolName string, since time.Time, status *string) {
+	m.toolExecCnt.WithLabelValues(toolName, *status).Inc()
+	m.toolExecDur.WithLabelValues(toolName, *status).Observe(time.Since(since).Seconds())
 	m.toolExecInfl.WithLabelValues(toolName).Dec()
 }
 

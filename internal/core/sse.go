@@ -437,16 +437,19 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			err    error
 		)
 
+		status := "success"
+
 		toolName := params.Name
 		if s.metrics != nil {
 			s.metrics.ToolExecStart(toolName)
-			defer s.metrics.ToolExecDone(toolName, reqStartTime)
+			defer s.metrics.ToolExecDone(toolName, reqStartTime, &status)
 		}
 
 		switch protoType {
 		case cnst.BackendProtoHttp:
 			result = s.callHTTPTool(c, req, conn, params, true)
 			if result == nil {
+				status = "error"
 				// Error already handled by callHTTPTool
 				return
 			}
@@ -455,16 +458,19 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			if transport == nil {
 				errMsg := "Server configuration not found"
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+				status = "error"
 				return
 			}
 
 			result, err = transport.CallTool(c.Request.Context(), params, mergeRequestInfo(conn.Meta().Request, c.Request))
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
+				status = "error"
 				return
 			}
 		default:
 			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			status = "error"
 			return
 		}
 
