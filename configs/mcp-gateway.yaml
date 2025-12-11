@@ -148,7 +148,7 @@ forward:
     override_existing: ${FORWARD_HEADER_OVERRIDE_EXISTING:false}
 
 metrics:
-  enabled: ${METRICS_ENABLED:true}
+  enabled: ${METRICS_ENABLED:false}
   path: "${METRICS_PATH:/metrics}"
   namespace: "${METRICS_NAMESPACE:mcp_gateway}"
   buckets:
