@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -117,4 +118,4 @@ func routeFromURL(path string) string {
 	return path
 }
 
-func httpStatus(code int) string { return http.StatusText(code) }
+func httpStatus(code int) string { return strconv.Itoa(code) }
