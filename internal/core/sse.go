@@ -330,6 +330,12 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		zap.String("session_id", conn.Meta().ID),
 	)
 
+	reqStartTime := time.Now()
+	if s.metrics != nil {
+		s.metrics.McpReqStart(req.Method)
+		defer s.metrics.McpReqDone(req.Method, reqStartTime)
+	}
+
 	switch req.Method {
 	case mcp.NotificationInitialized:
 		s.sendAcceptedResponse(c)
@@ -430,6 +436,13 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			result *mcp.CallToolResult
 			err    error
 		)
+
+		toolName := params.Name
+		if s.metrics != nil {
+			s.metrics.ToolExecStart(toolName)
+			defer s.metrics.ToolExecDone(toolName, reqStartTime)
+		}
+
 		switch protoType {
 		case cnst.BackendProtoHttp:
 			result = s.callHTTPTool(c, req, conn, params, true)

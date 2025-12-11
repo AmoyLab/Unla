@@ -199,6 +199,12 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 	// Ensure downstream operations see this span in the request context
 	c.Request = c.Request.WithContext(ctx)
 
+	reqStartTime := time.Now()
+	if s.metrics != nil {
+		s.metrics.McpReqStart(req.Method)
+		defer s.metrics.McpReqDone(req.Method, reqStartTime)
+	}
+
 	// Process the request based on its method
 	switch req.Method {
 	case mcp.Initialize:
@@ -294,6 +300,13 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			result *mcp.CallToolResult
 			err    error
 		)
+
+		toolName := params.Name
+		if s.metrics != nil {
+			s.metrics.ToolExecStart(toolName)
+			defer s.metrics.ToolExecDone(toolName, reqStartTime)
+		}
+
 		switch protoType {
 		case cnst.BackendProtoHttp:
 			result = s.callHTTPTool(c, req, conn, params, false)

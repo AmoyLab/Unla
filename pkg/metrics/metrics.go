@@ -13,11 +13,17 @@ import (
 )
 
 type Metrics struct {
-	registry   *prometheus.Registry
-	namespace  string
-	httpReqCnt *prometheus.CounterVec
-	httpDur    *prometheus.HistogramVec
-	httpInfl   *prometheus.GaugeVec
+	registry     *prometheus.Registry
+	namespace    string
+	httpReqCnt   *prometheus.CounterVec
+	httpDur      *prometheus.HistogramVec
+	httpInfl     *prometheus.GaugeVec
+	mcpReqCnt    *prometheus.CounterVec
+	mcpReqDur    *prometheus.HistogramVec
+	mcpReqInfl   *prometheus.GaugeVec
+	toolExecCnt  *prometheus.CounterVec
+	toolExecDur  *prometheus.HistogramVec
+	toolExecInfl *prometheus.GaugeVec
 }
 
 func New(cfg config.MetricsConfig) *Metrics {
@@ -27,19 +33,55 @@ func New(cfg config.MetricsConfig) *Metrics {
 	r.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	r.MustRegister(collectors.NewGoCollector())
 
+	// Register basic HTTP metrics
 	httpReqCnt := prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: ns, Name: "http_requests_total"}, []string{"method", "route", "status"})
 	httpDur := prometheus.NewHistogramVec(prometheus.HistogramOpts{Namespace: ns, Name: "http_request_duration_seconds", Buckets: cfg.Buckets}, []string{"method", "route", "status"})
-	httpInfl := prometheus.NewGaugeVec(prometheus.GaugeOpts{Namespace: ns, Name: "http_inflight_requests"}, []string{"route"})
-
+	httpInfl := prometheus.NewGaugeVec(prometheus.GaugeOpts{Namespace: ns, Name: "http_requests_inflight"}, []string{"route"})
 	r.MustRegister(httpReqCnt, httpDur, httpInfl)
 
+	mcpReqCnt := prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: ns, Name: "mcp_requests_total"}, []string{"method"})
+	mcpReqDur := prometheus.NewHistogramVec(prometheus.HistogramOpts{Namespace: ns, Name: "mcp_request_duration_seconds", Buckets: cfg.Buckets}, []string{"method"})
+	mcpReqInfl := prometheus.NewGaugeVec(prometheus.GaugeOpts{Namespace: ns, Name: "mcp_requests_inflight"}, []string{"method"})
+	r.MustRegister(mcpReqDur, mcpReqCnt, mcpReqInfl)
+
+	toolExecCnt := prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: ns, Name: "tool_execution_total"}, []string{"tool_name"})
+	toolExecDur := prometheus.NewHistogramVec(prometheus.HistogramOpts{Namespace: ns, Name: "tool_execution_duration_seconds", Buckets: cfg.Buckets}, []string{"tool_name"})
+	toolExecInfl := prometheus.NewGaugeVec(prometheus.GaugeOpts{Namespace: ns, Name: "tool_execution_inflight_requests"}, []string{"tool_name"})
+	r.MustRegister(toolExecCnt, toolExecDur, toolExecInfl)
+
 	return &Metrics{
-		registry:   r,
-		namespace:  ns,
-		httpReqCnt: httpReqCnt,
-		httpDur:    httpDur,
-		httpInfl:   httpInfl,
+		registry:     r,
+		namespace:    ns,
+		httpReqCnt:   httpReqCnt,
+		httpDur:      httpDur,
+		httpInfl:     httpInfl,
+		mcpReqCnt:    mcpReqCnt,
+		mcpReqDur:    mcpReqDur,
+		mcpReqInfl:   mcpReqInfl,
+		toolExecCnt:  toolExecCnt,
+		toolExecDur:  toolExecDur,
+		toolExecInfl: toolExecInfl,
 	}
+}
+
+func (m *Metrics) McpReqStart(method string) {
+	m.mcpReqInfl.WithLabelValues(method).Inc()
+}
+
+func (m *Metrics) McpReqDone(method string, since time.Time) {
+	m.mcpReqCnt.WithLabelValues(method).Inc()
+	m.mcpReqDur.WithLabelValues(method).Observe(time.Since(since).Seconds())
+	m.mcpReqInfl.WithLabelValues(method).Dec()
+}
+
+func (m *Metrics) ToolExecStart(toolName string) {
+	m.toolExecInfl.WithLabelValues(toolName).Inc()
+}
+
+func (m *Metrics) ToolExecDone(toolName string, since time.Time) {
+	m.toolExecCnt.WithLabelValues(toolName).Inc()
+	m.toolExecDur.WithLabelValues(toolName).Observe(time.Since(since).Seconds())
+	m.toolExecInfl.WithLabelValues(toolName).Dec()
 }
 
 func (m *Metrics) Middleware() gin.HandlerFunc {
