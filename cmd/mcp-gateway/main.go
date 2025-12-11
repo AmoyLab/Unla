@@ -224,6 +224,8 @@ func run() {
 		logger.Fatal("Failed to create server", zap.Error(err))
 	}
 
+	server.EnableMetrics(cfg.Metrics)
+
 	err = server.RegisterRoutes(ctx)
 	if err != nil {
 		logger.Fatal("failed to register routes",

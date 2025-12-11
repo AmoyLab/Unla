@@ -146,3 +146,22 @@ forward:
     ignore_headers: "${FORWARD_IGNORE_HEADERS: Accept, Accept-Encoding, Accept-Language, Host, Cookie, Connection, User-Agent, Content-Length, Content-Type}"
     case_insensitive: ${FORWARD_HEADER_CASE_INSENSITIVE:true}
     override_existing: ${FORWARD_HEADER_OVERRIDE_EXISTING:false}
+
+metrics:
+  enabled: ${METRICS_ENABLED:true}
+  path: "${METRICS_PATH:/metrics}"
+  namespace: "${METRICS_NAMESPACE:mcp_gateway}"
+  buckets:
+    - 0.005
+    - 0.01
+    - 0.025
+    - 0.05
+    - 0.1
+    - 0.25
+    - 0.5
+    - 0.75
+    - 1.0
+    - 2.5
+    - 5.0
+    - 7.5
+    - 10

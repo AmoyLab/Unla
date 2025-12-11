@@ -19,6 +19,7 @@ import (
 	"github.com/amoylab/unla/pkg/mcp"
 	apptrace "github.com/amoylab/unla/pkg/trace"
 
+	"github.com/amoylab/unla/pkg/metrics"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -66,6 +67,8 @@ type (
 		forwardConfig   config.ForwardConfig
 		traceCapture    apptrace.CaptureConfig
 		tracingService  string // OTel service name for tracing
+		metrics         *metrics.Metrics
+		metricsPath     string
 		// Pre-parsed header lists for efficient lookup
 		ignoreHeaders   []string
 		allowHeaders    []string

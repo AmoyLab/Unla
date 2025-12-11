@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/amoylab/unla/internal/common/config"
+	"github.com/amoylab/unla/pkg/metrics"
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/trace"
@@ -194,7 +195,26 @@ func (s *Server) EnableTracing(serviceName string) {
 			if r.URL.Path == "/health_check" {
 				return false
 			}
+			// Skip tracing for metrics endpoint (dynamic path)
+			if s.metricsPath != "" && r.URL.Path == s.metricsPath {
+				return false
+			}
 			return true
 		}),
 	))
+}
+
+func (s *Server) EnableMetrics(cfg config.MetricsConfig) {
+	// If metrics are not enabled, skip configuration
+	if !cfg.Enabled {
+		return
+	}
+	m := metrics.New(cfg)
+	s.metrics = m
+	s.metricsPath = cfg.Path
+	s.logger.Info("metrics enabled", zap.String("path", cfg.Path))
+	// Register metrics middleware
+	s.router.Use(m.Middleware())
+	// Register metrics handler
+	s.router.GET(cfg.Path, gin.WrapH(m.Handler()))
 }

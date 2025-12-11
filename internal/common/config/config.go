@@ -47,6 +47,15 @@ type (
 		Notifier       NotifierConfig   `yaml:"notifier"`
 		Session        SessionConfig    `yaml:"session"`
 		Auth           AuthConfig       `yaml:"auth"`
+		Metrics        MetricsConfig    `yaml:"metrics"`
+	}
+
+	// MetricsConfig controls Prometheus metrics exposure
+	MetricsConfig struct {
+		Enabled   bool      `yaml:"enabled"`
+		Path      string    `yaml:"path"`
+		Namespace string    `yaml:"namespace"`
+		Buckets   []float64 `yaml:"buckets"`
 	}
 
 	// SessionConfig represents the session storage configuration
@@ -150,6 +159,19 @@ func LoadConfig[T Type](filename string) (*T, string, error) {
 		if mcpCfg.ReloadInterval <= time.Second {
 			mcpCfg.ReloadInterval = 600 * time.Second
 		}
+		// Metrics defaults
+		if mcpCfg.Metrics.Enabled {
+			if mcpCfg.Metrics.Path == "" {
+				mcpCfg.Metrics.Path = "/metrics"
+			}
+			if mcpCfg.Metrics.Namespace == "" {
+				mcpCfg.Metrics.Namespace = "mcp_gateway"
+			}
+			if len(mcpCfg.Metrics.Buckets) == 0 {
+				mcpCfg.Metrics.Buckets = []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10}
+			}
+		}
+
 	}
 
 	// Set defaults for apiserver MCP runtime if missing
