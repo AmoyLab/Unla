@@ -441,8 +441,9 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 
 		toolName := params.Name
 		if s.metrics != nil {
+			toolStartTime := time.Now()
 			s.metrics.ToolExecStart(toolName)
-			defer s.metrics.ToolExecDone(toolName, reqStartTime, &status)
+			defer s.metrics.ToolExecDone(toolName, toolStartTime, &status)
 		}
 
 		switch protoType {

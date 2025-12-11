@@ -305,8 +305,9 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 
 		toolName := params.Name
 		if s.metrics != nil {
+			toolStartTime := time.Now()
 			s.metrics.ToolExecStart(toolName)
-			defer s.metrics.ToolExecDone(toolName, reqStartTime, &status)
+			defer s.metrics.ToolExecDone(toolName, toolStartTime, &status)
 		}
 
 		switch protoType {
