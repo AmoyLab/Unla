@@ -125,6 +125,13 @@ func processArguments(req *http.Request, tool *config.ToolConfig, args map[strin
 			req.Header.Set(arg.Name, value)
 		case "query":
 			q := req.URL.Query()
+			// Check if the parameter already exists in the URL to avoid duplicates
+			// This can happen when the parameter is already included in the endpoint template
+			existingValues := q[arg.Name]
+			if len(existingValues) > 0 {
+				// Remove existing parameter and add the new one to ensure proper encoding
+				q.Del(arg.Name)
+			}
 			q.Add(arg.Name, value)
 			req.URL.RawQuery = q.Encode()
 		case "form-data":
