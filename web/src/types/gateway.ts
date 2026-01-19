@@ -35,6 +35,7 @@ export interface MCPServerConfig {
   args?: string[];
   env?: Record<string, string>;
   url?: string;
+  headers?: Record<string, string>;
   policy: string;
   preinstalled: boolean;
 }
