@@ -24,7 +24,7 @@ RUN npm install -g pnpm@9.15.0
 RUN pnpm install --frozen-lockfile
 RUN pnpm run build
 
-FROM nginx:1.27.5-bookworm
+FROM nginx:1.28.0-bookworm
 
 WORKDIR /app
 
