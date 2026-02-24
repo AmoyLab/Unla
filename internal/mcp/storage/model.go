@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
-	"gorm.io/gorm"
 )
 
 // MCPConfig represents the database model for MCPConfig
@@ -36,29 +37,32 @@ func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 		UpdatedAt: m.UpdatedAt,
 	}
 
+	wrapError := func(context string, err error) error {
+		return fmt.Errorf("failed to unmarshal MCP %s configuration '%s' (tenant: '%s'): %w", m.Name, m.Tenant, context, err)
+	}
 	if len(m.Routers) > 0 {
 		if err := json.Unmarshal([]byte(m.Routers), &cfg.Routers); err != nil {
-			return nil, err
+			return nil, wrapError("Routers", err)
 		}
 	}
 	if len(m.Servers) > 0 {
 		if err := json.Unmarshal([]byte(m.Servers), &cfg.Servers); err != nil {
-			return nil, err
+			return nil, wrapError("Servers", err)
 		}
 	}
 	if len(m.Tools) > 0 {
 		if err := json.Unmarshal([]byte(m.Tools), &cfg.Tools); err != nil {
-			return nil, err
+			return nil, wrapError("Tools", err)
 		}
 	}
 	if len(m.Prompts) > 0 {
 		if err := json.Unmarshal([]byte(m.Prompts), &cfg.Prompts); err != nil {
-			return nil, err
+			return nil, wrapError("Prompts", err)
 		}
 	}
 	if len(m.McpServers) > 0 {
 		if err := json.Unmarshal([]byte(m.McpServers), &cfg.McpServers); err != nil {
-			return nil, err
+			return nil, wrapError("McpServers", err)
 		}
 	}
 

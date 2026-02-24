@@ -391,6 +391,22 @@ func NewCallToolResultText(text string) *CallToolResult {
 	}
 }
 
+// NewCallToolResultTextWithError creates a new CallToolResult with text content and error flag
+// @param text the text content
+// @param isError indicates if the result is an error
+// @return *CallToolResult the CallToolResult object with the text content and error flag
+func NewCallToolResultTextWithError(text string, isError bool) *CallToolResult {
+	return &CallToolResult{
+		Content: []Content{
+			&TextContent{
+				Type: TextContentType,
+				Text: text,
+			},
+		},
+		IsError: isError,
+	}
+}
+
 // NewCallToolResultImage  creates a new CallToolResult with an image content
 // @param imageData the image data in base64 format
 // @param mimeType the MIME type of the image (e.g., "image/png", "image/jpeg")
