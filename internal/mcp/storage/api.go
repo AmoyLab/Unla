@@ -70,10 +70,34 @@ func (s *APIStore) List(_ context.Context, _ ...bool) ([]*config.MCPConfig, erro
 	if err != nil {
 		return nil, err
 	}
-	var configs []*config.MCPConfig
-	err = json.Unmarshal([]byte(jsonStr), &configs)
-	if err != nil {
-		return nil, err
+
+	//var configs []*config.MCPConfig
+	//err = json.Unmarshal([]byte(jsonStr), &configs)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	// Unmarshal items individually (instead of the whole array) to precisely identify the failing configuration (index/name/tenant).
+	var items []json.RawMessage
+	if err := json.Unmarshal([]byte(jsonStr), &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal MCP configuration array: %w", err)
+	}
+
+	configs := make([]*config.MCPConfig, 0, len(items))
+	for i, raw := range items {
+		var cfg config.MCPConfig
+		if err := json.Unmarshal(raw, &cfg); err != nil {
+			var meta struct {
+				Name   string `json:"name"`
+				Tenant string `json:"tenant"`
+			}
+			_ = json.Unmarshal(raw, &meta)
+			if meta.Name != "" || meta.Tenant != "" {
+				return nil, fmt.Errorf("failed to unmarshal MCP configuration '%s' (tenant: '%s', index: %d): %w", meta.Name, meta.Tenant, i, err)
+			}
+			return nil, fmt.Errorf("failed to unmarshal MCP configuration at index %d: %w", i, err)
+		}
+		configs = append(configs, &cfg)
 	}
 	return configs, nil
 }
