@@ -93,9 +93,17 @@ func (s *APIStore) List(_ context.Context, _ ...bool) ([]*config.MCPConfig, erro
 			}
 			_ = json.Unmarshal(raw, &meta)
 			if meta.Name != "" || meta.Tenant != "" {
-				return nil, fmt.Errorf("failed to unmarshal MCP configuration '%s' (tenant: '%s', index: %d): %w", meta.Name, meta.Tenant, i, err)
+				s.logger.Warn("failed to unmarshal MCP configuration, skipping",
+					zap.String("name", meta.Name),
+					zap.String("tenant", meta.Tenant),
+					zap.Int("index", i),
+					zap.Error(err))
+			} else {
+				s.logger.Warn("failed to unmarshal MCP configuration, skipping",
+					zap.Int("index", i),
+					zap.Error(err))
 			}
-			return nil, fmt.Errorf("failed to unmarshal MCP configuration at index %d: %w", i, err)
+			continue // Skip failed configuration
 		}
 		configs = append(configs, &cfg)
 	}
