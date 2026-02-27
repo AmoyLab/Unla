@@ -2,6 +2,9 @@ package core
 
 import (
 	"bytes"
+	"compress/flate"
+	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +16,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/zstd"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
@@ -29,6 +34,101 @@ import (
 	"github.com/amoylab/unla/internal/template"
 	"github.com/amoylab/unla/pkg/mcp"
 )
+
+func parseContentEncodings(contentEncoding string) []string {
+	parts := strings.Split(contentEncoding, ",")
+	encodings := make([]string, 0, len(parts))
+	for _, part := range parts {
+		encoding := strings.ToLower(strings.TrimSpace(part))
+		if encoding == "" || encoding == "identity" {
+			continue
+		}
+		encodings = append(encodings, encoding)
+	}
+	return encodings
+}
+
+func decodeBodyBytesByEncoding(body []byte, encoding string) ([]byte, error) {
+	var (
+		reader      io.Reader = bytes.NewReader(body)
+		closeFn     func() error
+		decodeError error
+	)
+
+	switch encoding {
+	case "gzip", "x-gzip":
+		gzReader, err := gzip.NewReader(reader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		reader = gzReader
+		closeFn = gzReader.Close
+	case "br":
+		reader = brotli.NewReader(reader)
+	case "zstd":
+		zstdReader, err := zstd.NewReader(reader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create zstd reader: %w", err)
+		}
+		reader = zstdReader
+		closeFn = func() error {
+			zstdReader.Close()
+			return nil
+		}
+	case "deflate":
+		zlibReader, err := zlib.NewReader(reader)
+		if err == nil {
+			reader = zlibReader
+			closeFn = zlibReader.Close
+			break
+		}
+		// Some servers send raw deflate stream for deflate token.
+		flateReader := flate.NewReader(bytes.NewReader(body))
+		reader = flateReader
+		closeFn = flateReader.Close
+	default:
+		return nil, fmt.Errorf("unsupported content encoding: %s", encoding)
+	}
+
+	decoded, err := io.ReadAll(reader)
+	if err != nil {
+		decodeError = fmt.Errorf("failed to decode %s body: %w", encoding, err)
+	}
+	if closeFn != nil {
+		closeErr := closeFn()
+		if decodeError != nil {
+			return nil, decodeError
+		}
+		if closeErr != nil {
+			return nil, fmt.Errorf("failed to close %s decoder: %w", encoding, closeErr)
+		}
+	}
+	if decodeError != nil {
+		return nil, decodeError
+	}
+
+	return decoded, nil
+}
+
+func readDecodedResponseBody(resp *http.Response) ([]byte, error) {
+	if resp == nil || resp.Body == nil {
+		return nil, nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	encodings := parseContentEncodings(resp.Header.Get("Content-Encoding"))
+	for i := len(encodings) - 1; i >= 0; i-- {
+		body, err = decodeBodyBytesByEncoding(body, encodings[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return body, nil
+}
 
 // shouldIgnoreHeader checks if a header should be ignored based on configuration
 func (s *Server) shouldIgnoreHeader(headerName string) bool {
@@ -330,8 +430,8 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 	}
 	defer resp.Body.Close()
 
-	// Read response body for logging in case of error
-	respBodyBytes, err := io.ReadAll(resp.Body)
+	// Read and decode response body for logging and unified downstream processing.
+	respBodyBytes, err := readDecodedResponseBody(resp)
 	if err != nil {
 		logger.Error("failed to read response body",
 			zap.String("tool", tool.Name),
@@ -341,8 +441,10 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Restore response body for further processing
+	// Restore decoded response body for further processing.
 	resp.Body = io.NopCloser(bytes.NewBuffer(respBodyBytes))
+	resp.Header.Del("Content-Encoding")
+	resp.Header.Del("Content-Length")
 
 	// Log response status
 	logger.Debug("received HTTP response",
