@@ -24,23 +24,25 @@ type APIStore struct {
 	logger *zap.Logger
 	url    string
 	// read config from response(json body) using gjson
-	configJSONPath string
-	timeout        time.Duration
+	configJSONPath      string
+	ignoreInvalidConfig bool
+	timeout             time.Duration
 }
 
 var _ Store = (*APIStore)(nil)
 
 // NewAPIStore creates a new api-based store
-func NewAPIStore(logger *zap.Logger, url string, configJSONPath string, timeout time.Duration) (*APIStore, error) {
+func NewAPIStore(logger *zap.Logger, url string, configJSONPath string, timeout time.Duration, ignoreInvalidConfig bool) (*APIStore, error) {
 	logger = logger.Named("mcp.store")
 
 	logger.Info("Using configuration url", zap.String("path", url))
 
 	return &APIStore{
-		logger:         logger,
-		url:            url,
-		configJSONPath: configJSONPath,
-		timeout:        timeout,
+		logger:              logger,
+		url:                 url,
+		configJSONPath:      configJSONPath,
+		timeout:             timeout,
+		ignoreInvalidConfig: ignoreInvalidConfig,
 	}, nil
 }
 
@@ -92,6 +94,9 @@ func (s *APIStore) List(_ context.Context, _ ...bool) ([]*config.MCPConfig, erro
 				Tenant string `json:"tenant"`
 			}
 			_ = json.Unmarshal(raw, &meta)
+			if !s.ignoreInvalidConfig {
+				return nil, fmt.Errorf("failed to unmarshal MCP configuration '%s' (tenant: '%s'): %w", meta.Name, meta.Tenant, err)
+			}
 			if meta.Name != "" || meta.Tenant != "" {
 				s.logger.Warn("failed to unmarshal MCP configuration, skipping",
 					zap.String("name", meta.Name),

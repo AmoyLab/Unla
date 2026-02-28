@@ -15,7 +15,7 @@ func NewStore(logger *zap.Logger, cfg *config.StorageConfig) (Store, error) {
 	case "db":
 		return NewDBStore(logger, cfg)
 	case "api":
-		return NewAPIStore(logger, cfg.API.Url, cfg.API.ConfigJSONPath, cfg.API.Timeout)
+		return NewAPIStore(logger, cfg.API.Url, cfg.API.ConfigJSONPath, cfg.API.Timeout, cfg.API.IgnoreInvalidConfig)
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %s", cfg.Type)
 	}

@@ -11,8 +11,9 @@ type (
 	}
 
 	APIStorageConfig struct {
-		Url            string        `yaml:"url"`            // http url for api
-		ConfigJSONPath string        `yaml:"configJSONPath"` // configJSONPath for config in http response
-		Timeout        time.Duration `yaml:"timeout"`        // timeout for http request
+		Url                 string        `yaml:"url"`                 // http url for api
+		ConfigJSONPath      string        `yaml:"configJSONPath"`      // configJSONPath for config in http response
+		Timeout             time.Duration `yaml:"timeout"`             // timeout for http request
+		IgnoreInvalidConfig bool          `yaml:"IgnoreInvalidConfig"` // skip invalid config if true
 	}
 )
