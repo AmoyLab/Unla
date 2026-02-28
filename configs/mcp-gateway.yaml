@@ -65,7 +65,7 @@ storage:
     url: "${GATEWAY_STORAGE_API_URL:}"
     configJSONPath: "${GATEWAY_STORAGE_API_CONFIG_JSON_PATH:}"
     timeout: "${GATEWAY_STORAGE_API_TIMEOUT:30s}"
-    ignoreInvalidConfig: "${GATEWAY_STORAGE_API_IGNORE_INVALID_CONFIG:false}"
+    ignoreInvalidConfig: ${GATEWAY_STORAGE_API_IGNORE_INVALID_CONFIG:false}
 
 # Notifier configuration
 notifier:
