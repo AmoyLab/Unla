@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/amoylab/unla/internal/common/config"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+
+	"github.com/amoylab/unla/internal/common/config"
 )
 
 func newTestConfig(name, tenant string) string {
@@ -77,7 +78,7 @@ func TestAPIStore_JSONPathMissing_ReturnsError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	store, err := NewAPIStore(zap.NewNop(), srv.URL, "data.config", 2*time.Second)
+	store, err := NewAPIStore(zap.NewNop(), srv.URL, "data.config", 2*time.Second, false)
 	assert.NoError(t, err)
 
 	got, err := store.Get(context.Background(), "t", "n")
