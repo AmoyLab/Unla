@@ -25,7 +25,7 @@ func TestAPIStore_Get_And_List_Basic(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", 2*time.Second)
+	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", 2*time.Second, false)
 	assert.NoError(t, err)
 
 	// Get returns struct unmarshaled from response
@@ -59,7 +59,7 @@ func TestAPIStore_Get_WithJSONPath(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	store, err := NewAPIStore(zap.NewNop(), srv.URL, "data.config", 2*time.Second)
+	store, err := NewAPIStore(zap.NewNop(), srv.URL, "data.config", 2*time.Second, false)
 	assert.NoError(t, err)
 
 	got, err := store.Get(context.Background(), "t3", "n3")
@@ -92,7 +92,7 @@ func TestAPIStore_RequestTimeout(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", 10*time.Millisecond)
+	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", 10*time.Millisecond, false)
 	assert.NoError(t, err)
 
 	got, err := store.Get(context.Background(), "t", "n")
@@ -107,7 +107,7 @@ func TestAPIStore_ListUpdated_DelegatesToList(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", time.Second)
+	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", time.Second, false)
 	assert.NoError(t, err)
 
 	lst, err := store.ListUpdated(context.Background(), time.Now().Add(-time.Hour))
@@ -126,7 +126,7 @@ func TestAPIStore_RWNoops(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", time.Second)
+	store, err := NewAPIStore(zap.NewNop(), srv.URL, "", time.Second, false)
 	assert.NoError(t, err)
 
 	// Read-only behavior
