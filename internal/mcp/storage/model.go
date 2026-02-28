@@ -38,7 +38,7 @@ func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 	}
 
 	wrapError := func(context string, err error) error {
-		return fmt.Errorf("failed to unmarshal MCP %s configuration '%s' (tenant: '%s'): %w", m.Name, m.Tenant, context, err)
+		return fmt.Errorf("failed to unmarshal MCP %s configuration '%s' (tenant: '%s'): %w", m.Name, m.Tenant, err)
 	}
 	if len(m.Routers) > 0 {
 		if err := json.Unmarshal([]byte(m.Routers), &cfg.Routers); err != nil {
