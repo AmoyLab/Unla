@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/amoylab/unla/internal/common/cnst"
@@ -56,6 +57,13 @@ func NewState() *State {
 		runtime:    make(map[uriPrefix]runtimeUnit),
 		metrics:    metrics{},
 	}
+}
+
+func headersEqual(a, b map[string]string) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	return reflect.DeepEqual(a, b)
 }
 
 // BuildStateFromConfig creates a new State from the given configuration
@@ -168,7 +176,7 @@ func BuildStateFromConfig(ctx context.Context, cfgs []*config.MCPConfig, oldStat
 									break
 								}
 							}
-							if argsMatch {
+							if argsMatch && headersEqual(oldConfig.Headers, mcpServer.Headers) {
 								// Reuse existing transport
 								transport = oldRuntime.transport
 							}

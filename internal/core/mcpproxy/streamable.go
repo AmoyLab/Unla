@@ -33,8 +33,17 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 		return nil
 	}
 
+	renderedHeaders, err := renderHeaders(t.cfg.Headers, tmplCtx)
+	if err != nil {
+		return err
+	}
+	var opts []transport.StreamableHTTPCOption
+	if len(renderedHeaders) > 0 {
+		opts = append(opts, transport.WithHTTPHeaders(renderedHeaders))
+	}
+
 	// Create streamable transport
-	streamableTransport, err := transport.NewStreamableHTTP(t.cfg.URL)
+	streamableTransport, err := transport.NewStreamableHTTP(t.cfg.URL, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
 	}

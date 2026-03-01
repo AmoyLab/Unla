@@ -78,6 +78,7 @@ type MCPServerConfig struct {
 	Args         []string          `json:"args,omitempty"`    // for stdio
 	Env          map[string]string `json:"env,omitempty"`     // for stdio
 	URL          string            `json:"url,omitempty"`     // for sse and streamable-http
+	Headers      map[string]string `json:"headers,omitempty"` // for sse and streamable-http
 	Policy       string            `json:"policy"`            // onStart or onDemand
 	Preinstalled bool              `json:"preinstalled"`      // whether to install this MCP server when mcp-gateway starts
 }
@@ -290,6 +291,7 @@ func FromMCPServerConfigs(cfgs []config.MCPServerConfig) []MCPServerConfig {
 			Args:         cfg.Args,
 			Env:          cfg.Env,
 			URL:          cfg.URL,
+			Headers:      cfg.Headers,
 			Policy:       string(cfg.Policy),
 			Preinstalled: cfg.Preinstalled,
 		}
