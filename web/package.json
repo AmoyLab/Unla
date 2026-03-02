@@ -61,7 +61,7 @@
     "i18next-browser-languagedetector": "^8.1.0",
     "js-yaml": "^4.1.0",
     "katex": "^0.16.22",
-    "lucide-react": "^0.522.0",
+    "lucide-react": "^0.544.0",
     "monaco-editor": "^0.52.2",
     "monaco-yaml": "^5.4.0",
     "react": "^18.3.1",
