@@ -254,6 +254,26 @@ func (s *RedisStore) Get(ctx context.Context, id string) (Connection, error) {
 		return nil, ErrSessionNotFound
 	}
 
+	// First check if connection already exists in our active connections map
+	s.mu.RLock()
+	if conn, exists := s.connections[id]; exists {
+		s.mu.RUnlock()
+		// Renew TTL for both the session data and the session ID in the set
+		key := s.prefix + id
+		if err := s.client.Expire(ctx, key, s.ttl).Err(); err != nil {
+			s.logger.Warn("failed to renew session TTL",
+				zap.String("id", id),
+				zap.Error(err))
+		}
+		if err := s.client.Expire(ctx, s.prefix+"ids", s.ttl).Err(); err != nil {
+			s.logger.Warn("failed to renew session ID set TTL",
+				zap.String("id", id),
+				zap.Error(err))
+		}
+		return conn, nil
+	}
+	s.mu.RUnlock()
+
 	key := s.prefix + id
 	data, err := s.client.Get(ctx, key).Bytes()
 	if err != nil {
