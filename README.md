@@ -12,6 +12,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/amoylab/unla)](https://goreportcard.com/report/github.com/amoylab/unla)
 [![Snyk Security](https://img.shields.io/badge/Snyk-Secure-blueviolet?logo=snyk)](https://snyk.io/test/github/mcp-ecosystem/mcp-gateway)
 <a href="https://llmapis.com?source=https%3A%2F%2Fgithub.com%2FAmoyLab%2FUnla" target="_blank"><img src="https://llmapis.com/api/badge/AmoyLab/Unla" alt="LLMAPIS" width="20" /></a>
+[![AgentAudit: Safe](https://img.shields.io/badge/AgentAudit-Safe-green?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAxTDMgNXY2YzkgMTMgMTIgMTMgMTItMTNWNXoiLz48L3N2Zz4=)](https://www.agentaudit.dev/audit/unla)
 
 ---
 
