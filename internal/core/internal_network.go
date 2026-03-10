@@ -86,6 +86,11 @@ func isInternalAddr(addr netip.Addr) bool {
 		return false
 	}
 
+	// Unmap IPv4-in-IPv6 (e.g. ::ffff:10.0.0.1) so all subsequent checks
+	// work uniformly. Without this, Is4() returns false for mapped addresses
+	// and the CGNAT prefix check would be skipped.
+	addr = addr.Unmap()
+
 	if addr.IsPrivate() ||
 		addr.IsLoopback() ||
 		addr.IsLinkLocalUnicast() ||
@@ -102,56 +107,67 @@ func isInternalAddr(addr netip.Addr) bool {
 	return false
 }
 
-func (s *Server) validateToolEndpoint(ctx context.Context, endpoint *url.URL) error {
-	// Skip validation if internal network access check is disabled
+// validateToolEndpoint checks whether the endpoint is allowed by the
+// internal-network policy. It returns the first resolved IP address (if DNS
+// resolution was performed) so the caller can pin the connection and prevent
+// DNS-rebinding attacks. When the host is already an IP literal or validation
+// is disabled, resolvedIP will be empty.
+func (s *Server) validateToolEndpoint(ctx context.Context, endpoint *url.URL) (resolvedIP string, err error) {
 	if !s.internalNetEnabled {
-		return nil
+		return "", nil
 	}
 
 	if endpoint == nil {
-		return fmt.Errorf("tool endpoint is empty")
+		return "", fmt.Errorf("tool endpoint is empty")
 	}
 
 	host := endpoint.Hostname()
 	if host == "" {
-		return fmt.Errorf("tool endpoint host is empty")
+		return "", fmt.Errorf("tool endpoint host is empty")
 	}
 
 	if s.internalNetACL.allowsHost(host) {
-		return nil
+		return "", nil
 	}
 
 	if addr, err := netip.ParseAddr(host); err == nil {
 		if isInternalAddr(addr) && !s.internalNetACL.allowsAddr(addr) {
-			return fmt.Errorf("internal network access is disabled for tool endpoints")
+			return "", fmt.Errorf("internal network access is disabled for tool endpoints")
 		}
-		return nil
+		// Host is an IP literal; no DNS involved, no rebinding risk.
+		return "", nil
 	}
 
 	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	addrs, err := net.DefaultResolver.LookupIPAddr(lookupCtx, host)
 	if err != nil {
-		return fmt.Errorf("failed to resolve tool endpoint host for internal access check: %w", err)
+		return "", fmt.Errorf("failed to resolve tool endpoint host for internal access check: %w", err)
 	}
 
 	internalFound := false
+	var firstAddr string
 	for _, addr := range addrs {
 		ip, ok := netip.AddrFromSlice(addr.IP)
 		if !ok {
 			continue
 		}
+		ip = ip.Unmap()
+		if firstAddr == "" {
+			firstAddr = ip.String()
+		}
 		if isInternalAddr(ip) {
 			internalFound = true
 			if s.internalNetACL.allowsAddr(ip) {
-				return nil
+				return firstAddr, nil
 			}
 		}
 	}
 
 	if internalFound {
-		return fmt.Errorf("internal network access is disabled for tool endpoints")
+		return "", fmt.Errorf("internal network access is disabled for tool endpoints")
 	}
 
-	return nil
+	// Return the resolved IP so the transport can pin the connection.
+	return firstAddr, nil
 }

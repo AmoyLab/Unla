@@ -272,10 +272,16 @@ func fillDefaultArgs(tool *config.ToolConfig, args map[string]any) {
 	}
 }
 
-// createHTTPClient creates an HTTP client with proxy support if configured
-func createHTTPClient(tool *config.ToolConfig) (*http.Client, error) {
+// createHTTPClient creates an HTTP client with proxy support if configured.
+// It installs a CheckRedirect hook that re-validates every redirect target
+// against the internal-network allowlist (preventing 302-based SSRF), and
+// pins the initial connection to pinnedAddr (when non-empty) to prevent
+// DNS-rebinding attacks.
+func (s *Server) createHTTPClient(tool *config.ToolConfig, pinnedAddr string) (*http.Client, error) {
+	var baseTransport *http.Transport
+
 	if tool != nil && tool.Proxy != nil {
-		transport := &http.Transport{}
+		baseTransport = &http.Transport{}
 
 		switch tool.Proxy.Type {
 		case "http", "https":
@@ -284,22 +290,47 @@ func createHTTPClient(tool *config.ToolConfig) (*http.Client, error) {
 			if err != nil {
 				return nil, fmt.Errorf("invalid %s proxy configuration: %w", tool.Proxy.Type, err)
 			}
-			transport.Proxy = http.ProxyURL(proxyURL)
+			baseTransport.Proxy = http.ProxyURL(proxyURL)
 
 		case "socks5":
 			dialer, err := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%d", tool.Proxy.Host, tool.Proxy.Port), nil, proxy.Direct)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create SOCKS5 dialer: %w", err)
 			}
-			transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			baseTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return dialer.Dial(network, addr)
 			}
 		}
-
-		return &http.Client{Transport: otelhttp.NewTransport(transport)}, nil
+	} else {
+		baseTransport = http.DefaultTransport.(*http.Transport).Clone()
 	}
 
-	return &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}, nil
+	// Pin DNS: when validateToolEndpoint resolved a hostname to an IP, we
+	// force the transport to connect to that IP instead of re-resolving.
+	// This closes the DNS-rebinding TOCTOU window.
+	if pinnedAddr != "" && baseTransport.DialContext == nil {
+		stdDialer := &net.Dialer{}
+		baseTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			_, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			return stdDialer.DialContext(ctx, network, net.JoinHostPort(pinnedAddr, port))
+		}
+	}
+
+	return &http.Client{
+		Transport: otelhttp.NewTransport(baseTransport),
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			if _, err := s.validateToolEndpoint(req.Context(), req.URL); err != nil {
+				return fmt.Errorf("redirect to %s blocked: %w", req.URL.Redacted(), err)
+			}
+			return nil
+		},
+	}, nil
 }
 
 // executeHTTPTool executes a tool with the given arguments
@@ -355,7 +386,8 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 		return nil, err
 	}
 
-	if err := s.validateToolEndpoint(ctx, req.URL); err != nil {
+	pinnedAddr, err := s.validateToolEndpoint(ctx, req.URL)
+	if err != nil {
 		logger.Warn("blocked tool endpoint",
 			zap.String("tool", tool.Name),
 			zap.String("session_id", conn.Meta().ID),
@@ -403,7 +435,7 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 	processArguments(req, tool, args)
 
 	// Execute request
-	cli, err := createHTTPClient(tool)
+	cli, err := s.createHTTPClient(tool, pinnedAddr)
 	if err != nil {
 		logger.Error("failed to create HTTP client",
 			zap.String("tool", tool.Name),

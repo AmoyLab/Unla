@@ -81,23 +81,25 @@ func TestFillDefaultArgs(t *testing.T) {
 }
 
 func TestCreateHTTPClient(t *testing.T) {
+	s := &Server{}
+
 	// default client when no proxy
-	cli, err := createHTTPClient(nil)
+	cli, err := s.createHTTPClient(nil, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, cli)
 
 	// http proxy
-	cli2, err := createHTTPClient(&config.ToolConfig{Proxy: &config.ProxyConfig{Type: "http", Host: "127.0.0.1", Port: 8080}})
+	cli2, err := s.createHTTPClient(&config.ToolConfig{Proxy: &config.ProxyConfig{Type: "http", Host: "127.0.0.1", Port: 8080}}, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, cli2)
 
 	// socks5 proxy
-	cli3, err := createHTTPClient(&config.ToolConfig{Proxy: &config.ProxyConfig{Type: "socks5", Host: "127.0.0.1", Port: 1080}})
+	cli3, err := s.createHTTPClient(&config.ToolConfig{Proxy: &config.ProxyConfig{Type: "socks5", Host: "127.0.0.1", Port: 1080}}, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, cli3)
 
 	// invalid proxy
-	_, err = createHTTPClient(&config.ToolConfig{Proxy: &config.ProxyConfig{Type: "https", Host: "invalid host with space", Port: 1}})
+	_, err = s.createHTTPClient(&config.ToolConfig{Proxy: &config.ProxyConfig{Type: "https", Host: "invalid host with space", Port: 1}}, "")
 	assert.Error(t, err)
 }
 
