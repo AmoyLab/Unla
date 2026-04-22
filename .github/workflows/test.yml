@@ -68,7 +68,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24.1'
+          go-version: '1.25.0'
           cache: true
 
       - name: Run Go Tests and Coverage
@@ -91,11 +91,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24.1'
+          go-version: '1.25.0'
 
       - name: Check if builds succeed
         run: |
           go build -v ./cmd/apiserver
           go build -v ./cmd/mcp-gateway
           go build -v ./cmd/mock-server
-
