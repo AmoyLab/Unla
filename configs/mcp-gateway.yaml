@@ -5,7 +5,7 @@ reload_switch: ${MCP_GATEWAY_RELOAD_SWITCH:true}
 
 # Logger configuration
 logger:
-  level: "${LOGGER_LEVEL:info}"                                           # debug, info, warn, error
+  level: "${LOGGER_LEVEL:debug}"                                          # debug, info, warn, error
   format: "${LOGGER_FORMAT:json}"                                         # json, console
   output: "${LOGGER_OUTPUT:stdout}"                                       # stdout, file
   file_path: "${LOGGER_FILE_PATH:/var/log/unla/mcp-gateway.log}"          # path to log file when output is file
@@ -24,7 +24,7 @@ tracing:
   protocol: "${TRACING_PROTOCOL:grpc}"                # grpc or http
   insecure: ${TRACING_INSECURE:true}
   sampler_rate: ${TRACING_SAMPLER_RATE:0.1}           # 0.0 ~ 1.0
-  environment: "${TRACING_ENV:dev}"
+  environment: "${TRACING_ENV:prod}"
   headers: {}                                         # optional exporter headers
   capture:
     downstream_error:
@@ -143,7 +143,7 @@ forward:
   mcp_arg:
     key_for_header: "${FORWARD_MCP_ARG_KEY_FOR_HEADER:__forwardHeaders}"
   header:
-    allow_headers: "${FORWARD_ALLOW_HEADERS:}"
+    allow_headers: "${FORWARD_ALLOW_HEADERS:cms-sso-act,cms-sso-token,cms-auth-token}"
     ignore_headers: "${FORWARD_IGNORE_HEADERS: Accept, Accept-Encoding, Accept-Language, Host, Cookie, Connection, User-Agent, Content-Length, Content-Type}"
     case_insensitive: ${FORWARD_HEADER_CASE_INSENSITIVE:true}
     override_existing: ${FORWARD_HEADER_OVERRIDE_EXISTING:false}
@@ -153,7 +153,7 @@ tool_access:
     # Enable/disable internal network access validation. Defaults to true.
     enabled: ${INTERNAL_NETWORK_VALIDATION_ENABLED:false}
     # Allowlist of internal targets (CIDR/IP/hostname). Empty means internal access is blocked.
-    allowlist: "${INTERNAL_NETWORK_ALLOWLIST:127.0.0.1/32,localhost}"
+    allowlist: "${INTERNAL_NETWORK_ALLOWLIST:127.0.0.1/32,localhost,10.253.2.0/24,control-server}"
 #    allowlist: "internal.service.local,192.168.1.1"
 
 metrics:
