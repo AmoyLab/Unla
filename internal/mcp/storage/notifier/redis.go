@@ -64,11 +64,19 @@ func (r *RedisNotifier) Watch(ctx context.Context) (<-chan *config.MCPConfig, er
 
 	ch := make(chan *config.MCPConfig, 10)
 
+	// Capture the current tail before starting the watch loop so callers do not
+	// miss updates published immediately after Watch returns.
+	lastID := "0-0"
+	latest, err := r.client.XRevRangeN(ctx, r.streamName, "+", "-", 1).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return nil, fmt.Errorf("failed to get stream tail: %w", err)
+	}
+	if len(latest) > 0 {
+		lastID = latest[0].ID
+	}
+
 	go func() {
 		defer close(ch)
-
-		// Start from the latest message ($ means read only new messages)
-		lastID := "$"
 
 		for {
 			select {
