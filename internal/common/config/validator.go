@@ -81,6 +81,21 @@ func validateSingleConfig(cfg *MCPConfig) []*ValidationError {
 		serverNames[mcpServer.Name] = true
 	}
 
+	// Check for duplicate router prefixes within this config.
+	routerPrefixMap := make(map[string]bool)
+	for _, router := range cfg.Routers {
+		prefix := normalizeRouterPrefix(router.Prefix)
+		if routerPrefixMap[prefix] {
+			errors = append(errors, &ValidationError{
+				Message: fmt.Sprintf("duplicate prefix %q found in router configurations", prefix),
+				Locations: []Location{{
+					File: cfg.Name,
+				}},
+			})
+		}
+		routerPrefixMap[prefix] = true
+	}
+
 	// Check if all referenced servers exist
 	for _, router := range cfg.Routers {
 		if !serverNames[router.Server] {
@@ -139,11 +154,13 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 	// Check for duplicate prefixes (global check)
 	prefixMap := make(map[string][]Location)
 	for _, cfg := range configs {
+		seenPrefixes := make(map[string]bool)
 		for _, router := range cfg.Routers {
-			prefix := strings.TrimSuffix(router.Prefix, "/")
-			if prefix == "" {
-				prefix = "/"
+			prefix := normalizeRouterPrefix(router.Prefix)
+			if seenPrefixes[prefix] {
+				continue
 			}
+			seenPrefixes[prefix] = true
 			prefixMap[prefix] = append(prefixMap[prefix], Location{
 				File: cfg.Name,
 			})
@@ -166,6 +183,14 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 	}
 
 	return formatValidationErrors(errors)
+}
+
+func normalizeRouterPrefix(prefix string) string {
+	prefix = strings.TrimSuffix(prefix, "/")
+	if prefix == "" {
+		return "/"
+	}
+	return prefix
 }
 
 // MergeConfigs merges a new configuration with existing configurations

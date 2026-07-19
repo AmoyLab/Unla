@@ -78,6 +78,16 @@ docker run -d \
    - Click "Add MCP Server" in the web interface
    - Paste the configuration and save
 
+For a read-only social research example, see
+[`configs/proxy-xquik-read-context.yaml`](configs/proxy-xquik-read-context.yaml).
+It maps [Xquik](https://github.com/Xquik-dev/x-twitter-scraper) X/Twitter search,
+tweet lookup, user lookup, and reply reads into MCP tools. Keep posting, direct
+messages, media uploads, monitors, webhooks, and giveaway draws in the
+[TweetClaw](https://github.com/Xquik-dev/tweetclaw) OpenClaw plugin so each
+write-like or recurring action goes through explicit user approval.
+
+Xquik is an independent third-party service. Not affiliated with X Corp. "Twitter" and "X" are trademarks of X Corp.
+
 ### Available Endpoints
 
 After configuration, the service will be available at these endpoints:

@@ -74,6 +74,22 @@ func TestFormatAndValidateConfigs_DuplicatePrefixes(t *testing.T) {
 	}
 }
 
+func TestValidateMCPConfig_DuplicatePrefixes(t *testing.T) {
+	cfg := &MCPConfig{
+		Name: "cfg",
+		Routers: []RouterConfig{
+			{Server: "s", Prefix: "/api/"},
+			{Server: "s", Prefix: "/api"},
+		},
+		Servers: []ServerConfig{{Name: "s"}},
+	}
+
+	err := ValidateMCPConfig(cfg)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "duplicate prefix \"/api\"")
+	}
+}
+
 func TestMergeConfigs_UpdateAppendDelete(t *testing.T) {
 	existing := []*MCPConfig{{Tenant: "t", Name: "n1"}, {Tenant: "t", Name: "n2"}}
 	// Update n1
