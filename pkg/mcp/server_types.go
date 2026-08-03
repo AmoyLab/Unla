@@ -21,7 +21,10 @@ type (
 	RequestMeta struct {
 		// Progress token for tracking request progress
 		// Can be string or number
-		ProgressToken any `json:"progressToken"`
+		ProgressToken      any                   `json:"progressToken,omitempty"`
+		ProtocolVersion    string                `json:"io.modelcontextprotocol/protocolVersion,omitempty"`
+		ClientCapabilities map[string]any        `json:"io.modelcontextprotocol/clientCapabilities,omitempty"`
+		ClientInfo         *ImplementationSchema `json:"io.modelcontextprotocol/clientInfo,omitempty"`
 	}
 
 	// JSONRPCRequest represents a JSON-RPC request that expects a response
@@ -84,7 +87,10 @@ type (
 
 	// ListToolsResult represents the result of a tools/list request
 	ListToolsResult struct {
-		Tools []ToolSchema `json:"tools"`
+		Tools      []ToolSchema `json:"tools"`
+		ResultType string       `json:"resultType,omitempty"`
+		TTLMS      int          `json:"ttlMs,omitempty"`
+		CacheScope string       `json:"cacheScope,omitempty"`
 	}
 
 	// CallToolParams represents parameters for a tools/call request
@@ -136,8 +142,9 @@ type (
 
 	// CallToolResult represents the result of a tools/call request
 	CallToolResult struct {
-		Content []Content `json:"content"`
-		IsError bool      `json:"isError"`
+		Content    []Content `json:"content"`
+		IsError    bool      `json:"isError"`
+		ResultType string    `json:"resultType,omitempty"`
 	}
 
 	// ImplementationSchema describes the name and version of an MCP implementation
@@ -181,6 +188,7 @@ type (
 		Prompts      PromptsCapabilitySchema      `json:"prompts"`
 		Resources    ResourcesCapabilitySchema    `json:"resources"`
 		Tools        ToolsCapabilitySchema        `json:"tools"`
+		Extensions   map[string]any               `json:"extensions,omitempty"`
 	}
 
 	ExperimentalCapabilitySchema struct {
@@ -219,6 +227,16 @@ type (
 		ServerInfo ImplementationSchema `json:"serverInfo"`
 		// Instructions describing how to use the server and its features
 		Instructions string `json:"instructions"`
+	}
+
+	DiscoverResult struct {
+		ResultType        string                   `json:"resultType"`
+		SupportedVersions []string                 `json:"supportedVersions"`
+		Capabilities      ServerCapabilitiesSchema `json:"capabilities"`
+		Meta              map[string]any           `json:"_meta,omitempty"`
+		Instructions      string                   `json:"instructions,omitempty"`
+		TTLMS             int                      `json:"ttlMs"`
+		CacheScope        string                   `json:"cacheScope"`
 	}
 
 	// InitializedNotification represents an initialized notification

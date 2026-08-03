@@ -16,10 +16,12 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
+        - "Mcp-Method"
+        - "Mcp-Name"
       exposeHeaders:
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
       allowCredentials: true
 
 servers:

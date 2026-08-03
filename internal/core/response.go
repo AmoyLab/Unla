@@ -17,6 +17,10 @@ import (
 
 // sendProtocolError sends a protocol-level error response
 func (s *Server) sendProtocolError(c *gin.Context, id any, message string, statusCode int, bizCode int) {
+	s.sendProtocolErrorWithData(c, id, message, statusCode, bizCode, nil)
+}
+
+func (s *Server) sendProtocolErrorWithData(c *gin.Context, id any, message string, statusCode int, bizCode int, data any) {
 	logger := s.getLogger(c)
 	logger.Warn("sending protocol error",
 		zap.Any("id", id),
@@ -43,6 +47,7 @@ func (s *Server) sendProtocolError(c *gin.Context, id any, message string, statu
 		Error: mcp.JSONRPCError{
 			Code:    bizCode,
 			Message: message,
+			Data:    data,
 		},
 	}
 	c.JSON(statusCode, response)
@@ -98,7 +103,7 @@ func (s *Server) sendSuccessResponse(c *gin.Context, conn session.Connection, re
 			JSONRPC: mcp.JSPNRPCVersion,
 			ID:      req.Id,
 		},
-		Result: result,
+		Result: modernizeResult(req.Method, result, isStreamableStateless(conn)),
 	}
 
 	s.sendResponse(c, req.Id, conn, response, isSSE)
@@ -115,6 +120,11 @@ func (s *Server) sendResponse(c *gin.Context, id any, conn session.Connection, r
 			zap.Error(err),
 		)
 		s.sendProtocolError(c, id, "Failed to marshal response", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		return
+	}
+
+	if isStreamableStateless(conn) && !isSSE {
+		c.JSON(http.StatusOK, response)
 		return
 	}
 
@@ -156,6 +166,43 @@ func (s *Server) sendResponse(c *gin.Context, id any, conn session.Connection, r
 		c.Header(mcp.HeaderMcpSessionID, conn.Meta().ID)
 		c.String(http.StatusOK, fmt.Sprintf("event: message\ndata: %s\n\n", eventData))
 	}
+}
+
+func modernizeResult(method string, result any, modern bool) any {
+	if !modern {
+		return result
+	}
+
+	if callResult, ok := result.(*mcp.CallToolResult); ok {
+		callResult.ResultType = "complete"
+		return callResult
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		return result
+	}
+
+	var fields map[string]any
+	if err := json.Unmarshal(data, &fields); err != nil || fields == nil {
+		fields = make(map[string]any)
+	}
+
+	if _, ok := fields["resultType"]; !ok {
+		fields["resultType"] = "complete"
+	}
+
+	switch method {
+	case mcp.ServerDiscover, mcp.ToolsList, mcp.PromptsList, mcp.ResourcesList, mcp.ResourcesTemplatesList, mcp.ResourcesRead:
+		if _, ok := fields["ttlMs"]; !ok {
+			fields["ttlMs"] = 60_000
+		}
+		if _, ok := fields["cacheScope"]; !ok {
+			fields["cacheScope"] = "private"
+		}
+	}
+
+	return fields
 }
 
 // sendAcceptedResponse sends an accepted response

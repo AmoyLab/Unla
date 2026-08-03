@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -28,11 +29,21 @@ func (s *Server) handleMCP(c *gin.Context) {
 		return
 
 	case http.MethodGet:
+		if c.GetHeader(mcp.HeaderMcpSessionID) == "" {
+			c.Header("Allow", "POST")
+			s.sendProtocolError(c, nil, "Method not allowed", http.StatusMethodNotAllowed, mcp.ErrorCodeMethodNotFound)
+			return
+		}
 		s.handleGet(c)
 	case http.MethodPost:
 		s.handlePost(c)
 		return
 	case http.MethodDelete:
+		if c.GetHeader(mcp.HeaderMcpSessionID) == "" {
+			c.Header("Allow", "POST")
+			s.sendProtocolError(c, nil, "Method not allowed", http.StatusMethodNotAllowed, mcp.ErrorCodeMethodNotFound)
+			return
+		}
 		s.handleDelete(c)
 		return
 
@@ -117,6 +128,11 @@ func (s *Server) handlePost(c *gin.Context) {
 		return
 	}
 
+	if s.isModernStreamableRequest(c, req) {
+		s.handleModernPost(c, req)
+		return
+	}
+
 	sessionID := c.GetHeader(mcp.HeaderMcpSessionID)
 
 	var (
@@ -147,6 +163,7 @@ func (s *Server) handlePost(c *gin.Context) {
 				CreatedAt: time.Now(),
 				Prefix:    prefix,
 				Type:      "streamable",
+				Request:   requestInfoFromHTTPRequest(c.Request),
 			}
 			conn, err = s.sessions.Register(c.Request.Context(), meta)
 			if err != nil {
@@ -165,6 +182,186 @@ func (s *Server) handlePost(c *gin.Context) {
 	}
 
 	s.handleMCPRequest(c, req, conn)
+}
+
+func (s *Server) isModernStreamableRequest(c *gin.Context, req mcp.JSONRPCRequest) bool {
+	if req.Method == mcp.ServerDiscover {
+		return true
+	}
+	if c.GetHeader(mcp.HeaderMCPProtocolVersion) == mcp.ProtocolVersion20260728 {
+		return true
+	}
+	version := protocolVersionFromRequest(req)
+	return version != ""
+}
+
+func (s *Server) handleModernPost(c *gin.Context, req mcp.JSONRPCRequest) {
+	if err := s.validateModernHeaders(c, req); err != nil {
+		s.sendProtocolError(c, req.Id, err.Error(), http.StatusBadRequest, mcp.ErrorCodeHeaderMismatch)
+		return
+	}
+
+	requestedVersion := protocolVersionFromRequest(req)
+	if requestedVersion != mcp.ProtocolVersion20260728 {
+		s.sendProtocolErrorWithData(c, req.Id, "Unsupported protocol version", http.StatusBadRequest,
+			mcp.ErrorCodeUnsupportedProtocolVersion, map[string]any{
+				"supported": []string{mcp.ProtocolVersion20260728},
+				"requested": requestedVersion,
+			})
+		return
+	}
+
+	prefix := strings.TrimSuffix(c.Request.URL.Path, "/mcp")
+	if prefix == "" {
+		prefix = "/"
+	}
+	conn := newStatelessConnection(&session.Meta{
+		ID:        "",
+		CreatedAt: time.Now(),
+		Prefix:    prefix,
+		Type:      streamableStatelessType,
+		Request:   requestInfoFromHTTPRequest(c.Request),
+	})
+	s.handleMCPRequest(c, req, conn)
+}
+
+func (s *Server) validateModernHeaders(c *gin.Context, req mcp.JSONRPCRequest) error {
+	headerVersion := c.GetHeader(mcp.HeaderMCPProtocolVersion)
+	if headerVersion == "" {
+		return fmt.Errorf("missing required header: %s", mcp.HeaderMCPProtocolVersion)
+	}
+	bodyVersion := protocolVersionFromRequest(req)
+	if bodyVersion == "" {
+		return fmt.Errorf("missing required request metadata: %s", mcp.MetaProtocolVersion)
+	}
+	if headerVersion != bodyVersion {
+		return fmt.Errorf("%s header value %q does not match body value %q", mcp.HeaderMCPProtocolVersion, headerVersion, bodyVersion)
+	}
+
+	methodHeader := c.GetHeader(mcp.HeaderMCPMethod)
+	if methodHeader == "" {
+		return fmt.Errorf("missing required header: %s", mcp.HeaderMCPMethod)
+	}
+	if methodHeader != req.Method {
+		return fmt.Errorf("%s header value %q does not match body value %q", mcp.HeaderMCPMethod, methodHeader, req.Method)
+	}
+
+	expectedName, required, err := modernRequestName(req)
+	if err != nil {
+		return err
+	}
+	if !required {
+		return nil
+	}
+
+	nameHeader := c.GetHeader(mcp.HeaderMCPName)
+	if nameHeader == "" {
+		return fmt.Errorf("missing required header: %s", mcp.HeaderMCPName)
+	}
+	decodedName, err := decodeMCPHeaderValue(nameHeader)
+	if err != nil {
+		return fmt.Errorf("invalid %s header: %w", mcp.HeaderMCPName, err)
+	}
+	if decodedName != expectedName {
+		return fmt.Errorf("%s header value %q does not match body value %q", mcp.HeaderMCPName, decodedName, expectedName)
+	}
+	return nil
+}
+
+func protocolVersionFromRequest(req mcp.JSONRPCRequest) string {
+	var params struct {
+		Meta map[string]any `json:"_meta"`
+	}
+	if len(req.Params) == 0 {
+		return ""
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return ""
+	}
+	if version, ok := params.Meta[mcp.MetaProtocolVersion].(string); ok {
+		return version
+	}
+	return ""
+}
+
+func modernRequestName(req mcp.JSONRPCRequest) (string, bool, error) {
+	switch req.Method {
+	case mcp.ToolsCall, mcp.PromptsGet:
+		var params struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return "", true, fmt.Errorf("invalid request parameters: %w", err)
+		}
+		return params.Name, true, nil
+	case mcp.ResourcesRead:
+		var params struct {
+			URI string `json:"uri"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return "", true, fmt.Errorf("invalid request parameters: %w", err)
+		}
+		return params.URI, true, nil
+	default:
+		return "", false, nil
+	}
+}
+
+func decodeMCPHeaderValue(value string) (string, error) {
+	const prefix = "=?base64?"
+	const suffix = "?="
+	if !strings.HasPrefix(value, prefix) || !strings.HasSuffix(value, suffix) {
+		return value, nil
+	}
+	encoded := strings.TrimSuffix(strings.TrimPrefix(value, prefix), suffix)
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
+}
+
+func serverCapabilities() mcp.ServerCapabilitiesSchema {
+	return mcp.ServerCapabilitiesSchema{
+		Logging: mcp.LoggingCapabilitySchema{},
+		Tools: mcp.ToolsCapabilitySchema{
+			ListChanged: true,
+		},
+		Prompts: mcp.PromptsCapabilitySchema{
+			ListChanged: false,
+		},
+		Resources: mcp.ResourcesCapabilitySchema{
+			Subscribe:   false,
+			ListChanged: false,
+		},
+	}
+}
+
+func requestInfoFromHTTPRequest(req *http.Request) *session.RequestInfo {
+	requestInfo := &session.RequestInfo{
+		Headers: make(map[string]string),
+		Query:   make(map[string]string),
+		Cookies: make(map[string]string),
+	}
+	if req == nil {
+		return requestInfo
+	}
+	for k, v := range req.Header {
+		if len(v) > 0 {
+			requestInfo.Headers[k] = v[0]
+		}
+	}
+	for k, v := range req.URL.Query() {
+		if len(v) > 0 {
+			requestInfo.Query[k] = v[0]
+		}
+	}
+	for _, cookie := range req.Cookies() {
+		if cookie != nil && cookie.Name != "" {
+			requestInfo.Cookies[cookie.Name] = cookie.Value
+		}
+	}
+	return requestInfo
 }
 
 // handleDelete handles DELETE requests to terminate sessions
@@ -207,7 +404,28 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 
 	// Process the request based on its method
 	switch req.Method {
+	case mcp.ServerDiscover:
+		s.sendSuccessResponse(c, conn, req, mcp.DiscoverResult{
+			ResultType:        "complete",
+			SupportedVersions: []string{mcp.ProtocolVersion20260728},
+			Capabilities:      serverCapabilities(),
+			Meta: map[string]any{
+				mcp.MetaServerInfo: mcp.ImplementationSchema{
+					Name:    cnst.AppName,
+					Version: version.Get(),
+				},
+			},
+			Instructions: "MCP gateway exposing configured tools, prompts, and resources.",
+			TTLMS:        60_000,
+			CacheScope:   "private",
+		}, false)
+		return
+
 	case mcp.Initialize:
+		if isStreamableStateless(conn) {
+			s.sendProtocolError(c, req.Id, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			return
+		}
 		// Handle initialization request
 		var params mcp.InitializeRequestParams
 		if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -217,19 +435,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 
 		s.sendSuccessResponse(c, conn, req, mcp.InitializedResult{
 			ProtocolVersion: mcp.LatestProtocolVersion,
-			Capabilities: mcp.ServerCapabilitiesSchema{
-				Logging: mcp.LoggingCapabilitySchema{},
-				Tools: mcp.ToolsCapabilitySchema{
-					ListChanged: true,
-				},
-				Prompts: mcp.PromptsCapabilitySchema{
-					ListChanged: false,
-				},
-				Resources: mcp.ResourcesCapabilitySchema{
-					Subscribe:   false,
-					ListChanged: false,
-				},
-			},
+			Capabilities:    serverCapabilities(),
 			ServerInfo: mcp.ImplementationSchema{
 				Name:    cnst.AppName,
 				Version: version.Get(),
@@ -238,9 +444,17 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		return
 
 	case mcp.NotificationInitialized:
+		if isStreamableStateless(conn) {
+			s.sendProtocolError(c, req.Id, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			return
+		}
 		c.Status(http.StatusAccepted)
 		return
 	case mcp.Ping:
+		if isStreamableStateless(conn) {
+			s.sendProtocolError(c, req.Id, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			return
+		}
 		// Handle ping request with an empty response
 		s.sendSuccessResponse(c, conn, req, struct{}{}, false)
 		return
@@ -344,6 +558,10 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		return
 
 	case mcp.LoggingSetLevel:
+		if isStreamableStateless(conn) {
+			s.sendProtocolError(c, req.Id, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			return
+		}
 		// Minimal stub: accept requested level and return empty object
 		// Inspector may invoke this regardless of server support; avoid -32601
 		type params struct {

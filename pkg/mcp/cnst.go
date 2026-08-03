@@ -2,6 +2,8 @@ package mcp
 
 // Protocol versions
 const (
+	ProtocolVersion20260728 = "2026-07-28"
+	ProtocolVersion20251125 = "2025-11-25"
 	ProtocolVersion20250326 = "2025-03-26"
 	ProtocolVersion20241105 = "2024-11-05"
 	LatestProtocolVersion   = ProtocolVersion20241105
@@ -12,6 +14,7 @@ const (
 const (
 	Initialize              = "initialize"
 	NotificationInitialized = "notifications/initialized"
+	ServerDiscover          = "server/discover"
 	Ping                    = "ping"
 	ToolsList               = "tools/list"
 	ToolsCall               = "tools/call"
@@ -56,8 +59,24 @@ const (
 	ErrorCodeRequestTimeout   = -32001
 )
 
+// Protocol-defined MCP server error codes.
 const (
-	HeaderMcpSessionID = "Mcp-Session-Id"
+	ErrorCodeHeaderMismatch             = -32020
+	ErrorCodeUnsupportedProtocolVersion = -32022
+)
+
+const (
+	HeaderMcpSessionID       = "Mcp-Session-Id"
+	HeaderMCPProtocolVersion = "MCP-Protocol-Version"
+	HeaderMCPMethod          = "Mcp-Method"
+	HeaderMCPName            = "Mcp-Name"
+)
+
+const (
+	MetaProtocolVersion    = "io.modelcontextprotocol/protocolVersion"
+	MetaClientCapabilities = "io.modelcontextprotocol/clientCapabilities"
+	MetaClientInfo         = "io.modelcontextprotocol/clientInfo"
+	MetaServerInfo         = "io.modelcontextprotocol/serverInfo"
 )
 
 const (

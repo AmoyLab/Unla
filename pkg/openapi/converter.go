@@ -102,8 +102,8 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 		CORS: &config.CORSConfig{
 			AllowOrigins:     []string{"*"},
 			AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-			AllowHeaders:     []string{"Content-Type", "Authorization", "Mcp-Session-Id", "mcp-protocol-version"},
-			ExposeHeaders:    []string{"Mcp-Session-Id", "mcp-protocol-version"},
+			AllowHeaders:     []string{"Content-Type", "Authorization", "Mcp-Session-Id", "MCP-Protocol-Version", "Mcp-Method", "Mcp-Name"},
+			ExposeHeaders:    []string{"Mcp-Session-Id", "MCP-Protocol-Version"},
 			AllowCredentials: true,
 		},
 	}

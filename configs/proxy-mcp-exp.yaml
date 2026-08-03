@@ -15,10 +15,12 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
+        - "Mcp-Method"
+        - "Mcp-Name"
       exposeHeaders:
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
       allowCredentials: true
   - server: "mock-user-sse"
     prefix: "/gateway/sse-proxy"
@@ -33,10 +35,12 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
+        - "Mcp-Method"
+        - "Mcp-Name"
       exposeHeaders:
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
       allowCredentials: true
   - server: "mock-user-mcp"
     prefix: "/gateway/streamable-http-proxy"
@@ -51,10 +55,12 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
+        - "Mcp-Method"
+        - "Mcp-Name"
       exposeHeaders:
         - "Mcp-Session-Id"
-        - "mcp-protocol-version"
+        - "MCP-Protocol-Version"
       allowCredentials: true
 
 mcpServers:

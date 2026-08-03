@@ -1,4 +1,4 @@
-FROM golang:1.24.1 AS apiserver-builder
+FROM golang:1.25.0 AS apiserver-builder
 
 WORKDIR /app
 
