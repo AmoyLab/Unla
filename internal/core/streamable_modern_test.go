@@ -112,6 +112,18 @@ func TestModernStreamableToolsListWithoutSession(t *testing.T) {
 	assert.Equal(t, "echo", decoded.Result.Tools[0].Name)
 }
 
+func TestModernStreamableHeadersAreCaseInsensitive(t *testing.T) {
+	body := `{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{` + modernParams("") + `}}`
+	c, w := newStreamablePostContext(body)
+	c.Request.Header.Set("mcp-protocol-version", mcp.ProtocolVersion20260728)
+	c.Request.Header.Set("mcp-method", mcp.ServerDiscover)
+
+	s := &Server{logger: zap.NewNop()}
+	s.handlePost(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
 func TestModernStreamableHeaderMismatch(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{` + modernParams("") + `}}`
 	c, w := newStreamablePostContext(body)
