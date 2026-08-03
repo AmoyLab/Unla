@@ -17,8 +17,8 @@ import (
 	"strings"
 
 	"github.com/andybalholm/brotli"
-	"github.com/klauspost/compress/zstd"
 	"github.com/gin-gonic/gin"
+	"github.com/klauspost/compress/zstd"
 	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
 
