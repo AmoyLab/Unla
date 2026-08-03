@@ -165,3 +165,22 @@ func TestLegacyStreamableInitializeStillCreatesSession(t *testing.T) {
 	assert.NotEmpty(t, w.Result().Header.Get(mcp.HeaderMcpSessionID))
 	assert.Contains(t, w.Body.String(), "event: message")
 }
+
+func TestLegacyStreamableStatefulMethodsWithoutSessionAreMethodNotAllowed(t *testing.T) {
+	for _, method := range []string{http.MethodGet, http.MethodDelete} {
+		t.Run(method, func(t *testing.T) {
+			c, w := newStreamablePostContext(`{}`)
+			c.Request.Method = method
+
+			s := &Server{logger: zap.NewNop(), sessions: session.NewMemoryStore(zap.NewNop())}
+			s.handleMCP(c)
+
+			assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+			assert.Equal(t, http.MethodPost, w.Result().Header.Get("Allow"))
+
+			var resp mcp.JSONRPCErrorSchema
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+			assert.Equal(t, mcp.ErrorCodeMethodNotFound, resp.Error.Code)
+		})
+	}
+}
