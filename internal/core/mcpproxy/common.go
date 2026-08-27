@@ -11,6 +11,7 @@ import (
 func convertMCPGoResult(res *mcpgo.CallToolResult) *mcp.CallToolResult {
 	result := &mcp.CallToolResult{
 		IsError: res.IsError,
+		Meta:    res.Meta,
 	}
 
 	// Process content items

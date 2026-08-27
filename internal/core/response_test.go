@@ -6,8 +6,11 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/amoylab/unla/internal/common/config"
+	"github.com/amoylab/unla/internal/core/state"
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
 	"github.com/gin-gonic/gin"
@@ -56,12 +59,20 @@ func TestSendSuccessResponse_HTTP(t *testing.T) {
 	conn := &fakeConn{meta: &session.Meta{ID: "sid"}}
 
 	req := mcp.JSONRPCRequest{Id: 2, Method: "tools/call", JSONRPC: mcp.JSPNRPCVersion}
-	s.sendSuccessResponse(c, conn, req, mcp.NewCallToolResultText("ok"), false)
+	result := mcp.NewCallToolResultText("ok")
+	result.Meta = map[string]any{"contains_pii": true}
+	s.sendSuccessResponse(c, conn, req, result, false)
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "text/event-stream", w.Result().Header.Get("Content-Type"))
 	assert.Equal(t, "sid", w.Result().Header.Get(mcp.HeaderMcpSessionID))
-	assert.Contains(t, w.Body.String(), "event: message")
-	assert.Contains(t, w.Body.String(), "\ndata: {")
+	payload := strings.TrimSpace(strings.TrimPrefix(w.Body.String(), "event: message\ndata: "))
+	var response struct {
+		Result struct {
+			Meta map[string]any `json:"_meta"`
+		} `json:"result"`
+	}
+	assert.NoError(t, json.Unmarshal([]byte(payload), &response))
+	assert.Equal(t, map[string]any{"contains_pii": true}, response.Result.Meta)
 }
 
 func TestSendSuccessResponse_SSE(t *testing.T) {
@@ -69,14 +80,42 @@ func TestSendSuccessResponse_SSE(t *testing.T) {
 	c, w := newGin()
 	conn := &fakeConn{meta: &session.Meta{ID: "sid"}}
 	req := mcp.JSONRPCRequest{Id: 3, Method: "tools/call", JSONRPC: mcp.JSPNRPCVersion}
-	s.sendSuccessResponse(c, conn, req, mcp.NewCallToolResultText("ok"), true)
+	result := mcp.NewCallToolResultText("ok")
+	result.Meta = map[string]any{"contains_pii": true}
+	s.sendSuccessResponse(c, conn, req, result, true)
 	assert.Equal(t, http.StatusAccepted, w.Code)
 	if assert.Len(t, conn.sent, 1) {
 		assert.Equal(t, "message", conn.sent[0].Event)
-		// payload is JSON, sanity check
-		var tmp any
-		assert.NoError(t, json.Unmarshal(conn.sent[0].Data, &tmp))
+		var response struct {
+			Result struct {
+				Meta map[string]any `json:"_meta"`
+			} `json:"result"`
+		}
+		assert.NoError(t, json.Unmarshal(conn.sent[0].Data, &response))
+		assert.Equal(t, map[string]any{"contains_pii": true}, response.Result.Meta)
 	}
+}
+
+func TestSendSuccessResponse_StatelessIncludesMeta(t *testing.T) {
+	s := &Server{logger: zap.NewNop()}
+	c, w := newGin()
+	conn := newStatelessConnection(&session.Meta{ID: "stateless", Type: streamableStatelessType})
+	req := mcp.JSONRPCRequest{Id: 4, Method: mcp.ToolsCall, JSONRPC: mcp.JSPNRPCVersion}
+	result := mcp.NewCallToolResultText("ok")
+	result.Meta = map[string]any{"contains_pii": true}
+
+	s.sendSuccessResponse(c, conn, req, result, false)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var response struct {
+		Result struct {
+			ResultType string         `json:"resultType"`
+			Meta       map[string]any `json:"_meta"`
+		} `json:"result"`
+	}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+	assert.Equal(t, "complete", response.Result.ResultType)
+	assert.Equal(t, map[string]any{"contains_pii": true}, response.Result.Meta)
 }
 
 func TestSendResponseMarshalError_HTTP(t *testing.T) {
@@ -104,9 +143,88 @@ func TestSendToolExecutionError_HTTP(t *testing.T) {
 	c, w := newGin()
 	conn := &fakeConn{meta: &session.Meta{ID: "sid"}}
 	req := mcp.JSONRPCRequest{Id: 6, Method: "tools/call", JSONRPC: mcp.JSPNRPCVersion}
-	s.sendToolExecutionError(c, conn, req, errors.New("x"), false)
+	s.sendToolExecutionError(c, conn, req, errors.New("x"), map[string]any{
+		"contains_pii": true,
+		"data_level":   "sensitive",
+	}, false)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "event: message")
+
+	payload := strings.TrimSpace(strings.TrimPrefix(w.Body.String(), "event: message\ndata: "))
+	var response struct {
+		Result struct {
+			IsError bool           `json:"isError"`
+			Meta    map[string]any `json:"_meta"`
+		} `json:"result"`
+	}
+	assert.NoError(t, json.Unmarshal([]byte(payload), &response))
+	assert.True(t, response.Result.IsError)
+	assert.Equal(t, map[string]any{
+		"contains_pii": true,
+		"data_level":   "sensitive",
+	}, response.Result.Meta)
+}
+
+func TestCallHTTPToolExecutionErrorIncludesConfiguredMeta(t *testing.T) {
+	st, err := state.BuildStateFromConfig(context.Background(), []*config.MCPConfig{{
+		Name:   "cfg",
+		Tenant: "default",
+		Routers: []config.RouterConfig{{
+			Server: "svc",
+			Prefix: "/gateway/test",
+		}},
+		Servers: []config.ServerConfig{{
+			Name:         "svc",
+			AllowedTools: []string{"sensitive"},
+		}},
+		Tools: []config.ToolConfig{{
+			Name:         "sensitive",
+			Method:       http.MethodGet,
+			Endpoint:     "http://127.0.0.1:0",
+			ResponseBody: "{{.Response.Body}}",
+			Meta: map[string]any{
+				"contains_pii": true,
+				"data_level":   "sensitive",
+			},
+		}},
+	}}, nil, zap.NewNop())
+	assert.NoError(t, err)
+
+	allowlist, invalidEntries := parseInternalNetworkAllowlist([]string{"127.0.0.0/8"})
+	assert.Empty(t, invalidEntries)
+	s := &Server{
+		logger:          zap.NewNop(),
+		state:           st,
+		toolRespHandler: CreateResponseHandlerChain(),
+		internalNetACL:  allowlist,
+	}
+	c, w := newGin()
+	conn := &fakeConn{meta: &session.Meta{
+		ID:      "sid",
+		Prefix:  "/gateway/test",
+		Request: &session.RequestInfo{Headers: map[string]string{}},
+	}}
+	req := mcp.JSONRPCRequest{Id: 7, Method: mcp.ToolsCall, JSONRPC: mcp.JSPNRPCVersion}
+
+	result := s.callHTTPTool(c, req, conn, mcp.CallToolParams{
+		Name:      "sensitive",
+		Arguments: json.RawMessage(`{}`),
+	}, false)
+
+	assert.Nil(t, result)
+	assert.Equal(t, http.StatusOK, w.Code)
+	payload := strings.TrimSpace(strings.TrimPrefix(w.Body.String(), "event: message\ndata: "))
+	var response struct {
+		Result struct {
+			IsError bool           `json:"isError"`
+			Meta    map[string]any `json:"_meta"`
+		} `json:"result"`
+	}
+	assert.NoError(t, json.Unmarshal([]byte(payload), &response))
+	assert.True(t, response.Result.IsError)
+	assert.Equal(t, map[string]any{
+		"contains_pii": true,
+		"data_level":   "sensitive",
+	}, response.Result.Meta)
 }
 
 func TestSendAcceptedResponse(t *testing.T) {

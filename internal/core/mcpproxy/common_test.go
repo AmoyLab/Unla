@@ -34,6 +34,21 @@ func TestConvertMCPGoResult_IsError(t *testing.T) {
 	assert.True(t, out.IsError)
 }
 
+func TestConvertMCPGoResult_PreservesResultMeta(t *testing.T) {
+	res := &mcpgo.CallToolResult{IsError: false}
+	res.Meta = map[string]any{
+		"contains_pii": false,
+		"request_id":   "downstream-123",
+	}
+
+	out := convertMCPGoResult(res)
+
+	assert.Equal(t, map[string]any{
+		"contains_pii": false,
+		"request_id":   "downstream-123",
+	}, out.Meta)
+}
+
 func TestConvertMCPGoResult_EmptyContent(t *testing.T) {
 	res := &mcpgo.CallToolResult{IsError: false}
 	res.Content = []mcpgo.Content{}

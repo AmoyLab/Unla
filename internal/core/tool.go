@@ -533,6 +533,7 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 		zap.String("session_id", conn.Meta().ID),
 		zap.Int("status", resp.StatusCode))
 
+	mergeToolResultMeta(callToolResult, tool.Meta)
 	return callToolResult, nil
 }
 
@@ -653,7 +654,7 @@ func (s *Server) callHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn sessi
 			zap.String("tool", params.Name),
 			zap.String("session_id", conn.Meta().ID),
 			zap.Error(err))
-		s.sendToolExecutionError(c, conn, req, err, isSSE)
+		s.sendToolExecutionError(c, conn, req, err, tool.Meta, isSSE)
 		return nil
 	}
 

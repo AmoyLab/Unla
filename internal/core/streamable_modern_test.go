@@ -86,6 +86,9 @@ func TestModernStreamableToolsListWithoutSession(t *testing.T) {
 			Description: "Echo input",
 			Method:      http.MethodGet,
 			Endpoint:    "http://127.0.0.1/echo",
+			Meta: map[string]any{
+				"contains_pii": true,
+			},
 		}},
 	}}, nil, zap.NewNop())
 	require.NoError(t, err)
@@ -110,6 +113,7 @@ func TestModernStreamableToolsListWithoutSession(t *testing.T) {
 	assert.Equal(t, "private", decoded.Result.CacheScope)
 	require.Len(t, decoded.Result.Tools, 1)
 	assert.Equal(t, "echo", decoded.Result.Tools[0].Name)
+	assert.Equal(t, map[string]any{"contains_pii": true}, decoded.Result.Tools[0].Meta)
 }
 
 func TestModernStreamableHeadersAreCaseInsensitive(t *testing.T) {

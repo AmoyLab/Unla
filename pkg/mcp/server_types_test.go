@@ -98,3 +98,26 @@ func TestNewCallToolResultVariants(t *testing.T) {
 		assert.Equal(t, "boom", txt.Text)
 	}
 }
+
+func TestCallToolResultSerializesMeta(t *testing.T) {
+	result := NewCallToolResultText("ok")
+	result.Meta = map[string]any{
+		"contains_pii": false,
+		"source":       "tool-result",
+	}
+
+	data, err := json.Marshal(result)
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{
+		"content": [{"type": "text", "text": "ok"}],
+		"isError": false,
+		"_meta": {"contains_pii": false, "source": "tool-result"}
+	}`, string(data))
+}
+
+func TestCallToolResultOmitsEmptyMeta(t *testing.T) {
+	data, err := json.Marshal(NewCallToolResultText("ok"))
+
+	assert.NoError(t, err)
+	assert.NotContains(t, string(data), `"_meta"`)
+}

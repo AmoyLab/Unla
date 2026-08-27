@@ -142,9 +142,10 @@ type (
 
 	// CallToolResult represents the result of a tools/call request
 	CallToolResult struct {
-		Content    []Content `json:"content"`
-		IsError    bool      `json:"isError"`
-		ResultType string    `json:"resultType,omitempty"`
+		Content    []Content      `json:"content"`
+		IsError    bool           `json:"isError"`
+		ResultType string         `json:"resultType,omitempty"`
+		Meta       map[string]any `json:"_meta,omitempty"`
 	}
 
 	// ImplementationSchema describes the name and version of an MCP implementation

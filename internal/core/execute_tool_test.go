@@ -43,6 +43,10 @@ func TestExecuteHTTPTool_Success(t *testing.T) {
 		Method:       http.MethodGet,
 		Endpoint:     srv.URL,
 		ResponseBody: "{{.Response.Body}}",
+		Meta: map[string]any{
+			"contains_pii": true,
+			"data_level":   "sensitive",
+		},
 	}
 	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 	conn := &fakeConnExec{meta: &session.Meta{ID: "sid", Request: &session.RequestInfo{Headers: map[string]string{"X-Req": "v"}}}}
@@ -51,11 +55,48 @@ func TestExecuteHTTPTool_Success(t *testing.T) {
 	res, err := s.executeHTTPTool(c, conn, tool, map[string]any{}, map[string]string{})
 	assert.NoError(t, err)
 	if assert.NotNil(t, res) {
+		assert.Equal(t, map[string]any{
+			"contains_pii": true,
+			"data_level":   "sensitive",
+		}, res.Meta)
 		if tc, ok := res.Content[0].(*mcp.TextContent); ok {
 			assert.Equal(t, `{"hello":"world"}`, tc.Text)
 		} else {
 			t.Fatalf("unexpected content type")
 		}
+	}
+}
+
+func TestExecuteHTTPTool_DownstreamErrorResultIncludesMeta(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid user"}`))
+	}))
+	defer srv.Close()
+
+	allowlist, _ := parseInternalNetworkAllowlist([]string{"127.0.0.0/8", "::1/128"})
+	s := &Server{logger: zap.NewNop(), toolRespHandler: CreateResponseHandlerChain(), internalNetACL: allowlist}
+	tool := &config.ToolConfig{
+		Name:         "sensitive",
+		Method:       http.MethodGet,
+		Endpoint:     srv.URL,
+		ResponseBody: "{{.Response.Body}}",
+		Meta: map[string]any{
+			"contains_pii": true,
+		},
+	}
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	conn := &fakeConnExec{meta: &session.Meta{ID: "sid", Request: &session.RequestInfo{Headers: map[string]string{}}}}
+	c, _ := gin.CreateTestContext(nil)
+	c.Request = req
+
+	res, err := s.executeHTTPTool(c, conn, tool, map[string]any{}, map[string]string{})
+
+	assert.NoError(t, err)
+	if assert.NotNil(t, res) {
+		assert.True(t, res.IsError)
+		assert.Equal(t, map[string]any{"contains_pii": true}, res.Meta)
 	}
 }
 
