@@ -209,6 +209,7 @@ func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams
 	// Convert mcp-go result to local mcp format
 	result := &mcp.CallToolResult{
 		IsError: mcpResult.IsError,
+		Meta:    mcpResult.Meta,
 	}
 
 	// Process content items

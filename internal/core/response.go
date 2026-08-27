@@ -54,7 +54,7 @@ func (s *Server) sendProtocolErrorWithData(c *gin.Context, id any, message strin
 }
 
 // sendToolExecutionError sends a tool execution error response
-func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection, req mcp.JSONRPCRequest, err error, isSSE bool) {
+func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection, req mcp.JSONRPCRequest, err error, toolMeta map[string]any, isSSE bool) {
 	logger := s.getLogger(c)
 	logger.Error("tool execution error",
 		zap.Any("request_id", req.Id),
@@ -76,12 +76,14 @@ func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection,
 		)
 	}
 
+	result := mcp.NewCallToolResultError(fmt.Sprintf("Error: %s", err.Error()))
+	mergeToolResultMeta(result, toolMeta)
 	response := mcp.JSONRPCResponse{
 		JSONRPCBaseResult: mcp.JSONRPCBaseResult{
 			JSONRPC: mcp.JSPNRPCVersion,
 			ID:      req.Id,
 		},
-		Result: mcp.NewCallToolResultError(fmt.Sprintf("Error: %s", err.Error())),
+		Result: result,
 	}
 	s.sendResponse(c, req.Id, conn, response, isSSE)
 }

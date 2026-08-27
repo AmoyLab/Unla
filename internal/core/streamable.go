@@ -543,7 +543,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 
 			result, err = transport.CallTool(c.Request.Context(), params, mergeRequestInfo(conn.Meta().Request, c.Request))
 			if err != nil {
-				s.sendToolExecutionError(c, conn, req, err, true)
+				s.sendToolExecutionError(c, conn, req, err, nil, true)
 				status = "error"
 				return
 			}
