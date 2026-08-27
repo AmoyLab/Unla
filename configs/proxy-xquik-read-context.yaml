@@ -1,0 +1,135 @@
+name: "xquik-read-context"
+tenant: "default"
+
+# Read-only X/Twitter research tools backed by Xquik.
+# Set XQUIK_API_KEY in the Unla runtime environment. Do not expose it as a tool
+# argument or paste it into prompts. Keep posts, replies, DMs, media uploads,
+# monitors, webhooks, and giveaway draws in TweetClaw/OpenClaw so each
+# write-like or recurring action receives explicit user approval.
+# Xquik is an independent third-party service. Not affiliated with X Corp.
+# "Twitter" and "X" are trademarks of X Corp.
+
+routers:
+  - server: "xquik-read-context"
+    prefix: "/gateway/xquik"
+    cors:
+      allowOrigins:
+        - "*"
+      allowMethods:
+        - "GET"
+        - "POST"
+        - "DELETE"
+        - "OPTIONS"
+      allowHeaders:
+        - "Content-Type"
+        - "Authorization"
+        - "Mcp-Session-Id"
+        - "mcp-protocol-version"
+      exposeHeaders:
+        - "Mcp-Session-Id"
+        - "mcp-protocol-version"
+      allowCredentials: false
+
+servers:
+  - name: "xquik-read-context"
+    description: "Read-only X/Twitter source context through Xquik"
+    allowedTools:
+      - "xquik_search_tweets"
+      - "xquik_get_tweet"
+      - "xquik_lookup_user"
+      - "xquik_get_tweet_replies"
+    config:
+      XAPIKey: '{{ env "XQUIK_API_KEY" }}'
+
+tools:
+  - name: "xquik_search_tweets"
+    description: "Search public X/Twitter posts for source context before drafting or analysis"
+    method: "GET"
+    endpoint: "https://xquik.com/api/v1/x/tweets/search"
+    headers:
+      x-api-key: "{{.Config.XAPIKey}}"
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      idempotentHint: true
+      openWorldHint: true
+    args:
+      - name: "q"
+        position: "query"
+        required: true
+        type: "string"
+        description: "X search syntax, keyword, account, or URL-derived query"
+        default: ""
+      - name: "limit"
+        position: "query"
+        required: false
+        type: "number"
+        description: "Maximum posts to return"
+        default: "20"
+    responseBody: "{{.Response.Body}}"
+
+  - name: "xquik_get_tweet"
+    description: "Look up one public X/Twitter post with engagement metrics"
+    method: "GET"
+    endpoint: "https://xquik.com/api/v1/x/tweets/{{.Args.tweetId}}"
+    headers:
+      x-api-key: "{{.Config.XAPIKey}}"
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      idempotentHint: true
+      openWorldHint: true
+    args:
+      - name: "tweetId"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Tweet ID to inspect"
+        default: ""
+    responseBody: "{{.Response.Body}}"
+
+  - name: "xquik_lookup_user"
+    description: "Look up an X/Twitter user profile by username"
+    method: "GET"
+    endpoint: "https://xquik.com/api/v1/x/users/{{.Args.username}}"
+    headers:
+      x-api-key: "{{.Config.XAPIKey}}"
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      idempotentHint: true
+      openWorldHint: true
+    args:
+      - name: "username"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Username without @, or user ID"
+        default: ""
+    responseBody: "{{.Response.Body}}"
+
+  - name: "xquik_get_tweet_replies"
+    description: "Collect reply context for a public X/Twitter post"
+    method: "GET"
+    endpoint: "https://xquik.com/api/v1/x/tweets/{{.Args.tweetId}}/replies"
+    headers:
+      x-api-key: "{{.Config.XAPIKey}}"
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      idempotentHint: true
+      openWorldHint: true
+    args:
+      - name: "tweetId"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Tweet ID whose replies should be read"
+        default: ""
+      - name: "cursor"
+        position: "query"
+        required: false
+        type: "string"
+        description: "Pagination cursor from a previous response"
+        default: ""
+    responseBody: "{{.Response.Body}}"
