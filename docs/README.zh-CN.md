@@ -178,4 +178,4 @@ docker run -d \
 
 ## 📈 Star 历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=AmoyLab/Unla&type=Date)](https://star-history.com/#AmoyLab/Unla&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=AmoyLab/Unla&type=Date)](https://star-history.dera.page/#AmoyLab/Unla&Date)
