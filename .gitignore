@@ -75,3 +75,6 @@ bin
 
 .history/*
 coverage.html
+.gobuildcache
+.gocache
+.gopath

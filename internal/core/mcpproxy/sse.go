@@ -33,8 +33,17 @@ func (t *SSETransport) Start(ctx context.Context, tmplCtx *template.Context) err
 		return nil
 	}
 
+	renderedHeaders, err := renderHeaders(t.cfg.Headers, tmplCtx)
+	if err != nil {
+		return err
+	}
+	var opts []transport.ClientOption
+	if len(renderedHeaders) > 0 {
+		opts = append(opts, transport.WithHeaders(renderedHeaders))
+	}
+
 	// Create SSE transport
-	sseTransport, err := transport.NewSSE(t.cfg.URL)
+	sseTransport, err := transport.NewSSE(t.cfg.URL, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create SSE transport: %w", err)
 	}
@@ -157,31 +166,21 @@ func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, 
 	ctx = scope.Ctx
 	defer scope.End()
 	if !t.IsRunning() {
-		if err := t.Start(ctx, nil); err != nil {
+		// Convert arguments to map[string]any
+		var args map[string]any
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return nil, fmt.Errorf("invalid tool arguments: %w", err)
+		}
+
+		// Prepare template context for header templates
+		tmplCtx, err := template.AssembleTemplateContext(req, args, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to prepare template context: %w", err)
+		}
+
+		if err := t.Start(ctx, tmplCtx); err != nil {
 			return nil, err
 		}
-	}
-
-	// Convert arguments to map[string]any
-	var args map[string]any
-	if err := json.Unmarshal(params.Arguments, &args); err != nil {
-		return nil, fmt.Errorf("invalid tool arguments: %w", err)
-	}
-
-	// Prepare template context for environment variables
-	tmplCtx, err := template.AssembleTemplateContext(req, args, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare template context: %w", err)
-	}
-
-	// Process environment variables with templates
-	renderedClientEnv := make(map[string]string)
-	for k, v := range t.cfg.Env {
-		rendered, err := template.RenderTemplate(v, tmplCtx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render env template: %w", err)
-		}
-		renderedClientEnv[k] = rendered
 	}
 
 	// Prepare tool call request parameters
