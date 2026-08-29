@@ -47,7 +47,7 @@
     }
   },
   "dependencies": {
-    "@heroui/react": "2.7.11",
+    "@heroui/react": "2.8.2",
     "@iconify/react": "latest",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@monaco-editor/react": "^4.7.0",
