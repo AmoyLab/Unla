@@ -13,8 +13,8 @@ live `tools/call`.
 ## Suggested fit
 
 Optional, off by default. Before enabling or promoting a proxied MCP upstream
-(or publishing a new config version), require a recent attestation and verify it
-offline with a pinned emitter public key.
+(or publishing a new config version), require an attestation and verify it offline with a pinned emitter
+(`--require-emitter`) and optional freshness (`--max-age`).
 
 - Any party can emit if they sign the schema.
 - AgentStatus is one optional emitter.
@@ -25,8 +25,8 @@ offline with a pinned emitter public key.
       - name: Verify tool delivery attestation
         if: hashFiles('toa.json') != ''
         run: |
-          pip install "git+https://github.com/Carmel-Labs-Inc/toa.git@345f24607919b5bdf143719b9ea062543cdfe88e#subdirectory=python"
-          toa-verify toa.json --require-layer functional=pass
+          pip install "git+https://github.com/Carmel-Labs-Inc/toa.git@5a1bf1cf6a15a4864ea809fe7b2a073f2cef4e22#subdirectory=python"
+          toa-verify toa.json --require-emitter agentstatus --require-layer functional=pass --max-age 7d
 ```
 
 Copy-paste workflow: [`examples/toa-after-gateway.yml`](../examples/toa-after-gateway.yml).
