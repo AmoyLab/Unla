@@ -2,6 +2,7 @@
 import Ai21Provider from './ai21';
 import Ai360Provider from './ai360';
 import AnthropicProvider from './anthropic';
+import AtlasCloudProvider from './atlascloud';
 import AzureProvider from './azure';
 import AzureAIProvider from './azureai';
 import BaichuanProvider from './baichuan';
@@ -121,6 +122,7 @@ export const DEFAULT_MODEL_PROVIDER_LIST = [
   PPIOProvider,
   HuggingFaceProvider,
   OpenRouterProvider,
+  AtlasCloudProvider,
   CloudflareProvider,
   GithubProvider,
   NovitaProvider,
@@ -173,6 +175,7 @@ export const isProviderDisableBrowserRequest = (id: string) => {
 export { default as Ai21ProviderCard } from './ai21';
 export { default as Ai360ProviderCard } from './ai360';
 export { default as AnthropicProviderCard } from './anthropic';
+export { default as AtlasCloudProviderCard } from './atlascloud';
 export { default as AzureProviderCard } from './azure';
 export { default as AzureAIProviderCard } from './azureai';
 export { default as BaichuanProviderCard } from './baichuan';
