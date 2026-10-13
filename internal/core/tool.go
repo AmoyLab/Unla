@@ -407,19 +407,14 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 					// Skip invalid templates silently to avoid breaking requests
 					continue
 				}
-				if maxLen > 0 && len(rendered) > maxLen {
-					rendered = rendered[:maxLen]
-				}
+				rendered = traceText(rendered, maxLen)
 				scope.Span.SetAttributes(attribute.String(cnst.AttrDownstreamArgPrefix+k, rendered))
 			}
 		}
 		// Optionally capture downstream request body content (rendered)
 		if s.traceCapture.DownstreamRequest.BodyEnabled && renderedBody != "" {
 			bMax := s.traceCapture.DownstreamRequest.BodyMaxLength
-			bodyPreview := renderedBody
-			if bMax > 0 && len(bodyPreview) > bMax {
-				bodyPreview = bodyPreview[:bMax]
-			}
+			bodyPreview := traceText(renderedBody, bMax)
 			scope.Span.SetAttributes(attribute.String(cnst.AttrDownstreamReqBody, bodyPreview))
 		}
 	}
@@ -488,10 +483,7 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 	// If downstream response indicates error, annotate the span with concise details per config
 	if resp.StatusCode >= 400 && s.traceCapture.DownstreamError.Enabled {
 		maxLen := s.traceCapture.DownstreamError.MaxBodyLength
-		preview := string(respBodyBytes)
-		if maxLen > 0 && len(preview) > maxLen {
-			preview = preview[:maxLen]
-		}
+		preview := traceText(string(respBodyBytes), maxLen)
 		scope.Span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", resp.StatusCode))
 		scope.Span.SetAttributes(
 			attribute.Int(cnst.AttrHTTPStatusCode, resp.StatusCode),
@@ -505,10 +497,7 @@ func (s *Server) executeHTTPTool(c *gin.Context, conn session.Connection, tool *
 	// Optionally capture all downstream responses (regardless of status code)
 	if s.traceCapture.DownstreamResponse.Enabled {
 		maxLen := s.traceCapture.DownstreamResponse.MaxBodyLength
-		body := string(respBodyBytes)
-		if maxLen > 0 && len(body) > maxLen {
-			body = body[:maxLen]
-		}
+		body := traceText(string(respBodyBytes), maxLen)
 		scope.Span.SetAttributes(
 			attribute.Int(cnst.AttrHTTPStatusCode, resp.StatusCode),
 			attribute.String(cnst.AttrHTTPRespType, resp.Header.Get("Content-Type")),
