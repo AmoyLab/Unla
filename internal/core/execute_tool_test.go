@@ -9,8 +9,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
@@ -18,6 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -284,4 +287,78 @@ func TestReadDecodedResponseBody_DeflateRaw(t *testing.T) {
 	body, err := readDecodedResponseBody(resp)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"hello":"raw-deflate"}`, string(body))
+}
+
+func TestExecuteHTTPToolTraceUTF8(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, want string
+		limit            int
+	}{
+		{"Chinese byte boundary", strings.Repeat("中", 100), strings.Repeat("中", 85), 256},
+		{"emoji byte boundary", "a" + strings.Repeat("😀", 80), "a" + strings.Repeat("😀", 63), 256},
+		{"invalid bytes", "a\xff\xfeb", "a�b", 256},
+		{"unlimited invalid bytes", "a\xffb", "a�b", 0},
+		{"negative limit", "a\xffb", "a�b", -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, recorder := recordTraceSpans(t)
+			received := make(chan string, 1)
+			downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := io.ReadAll(r.Body)
+				assert.NoError(t, err)
+				received <- string(body)
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			defer downstream.Close()
+
+			server := &Server{logger: zap.NewNop(), toolRespHandler: CreateResponseHandlerChain()}
+			capture := &server.traceCapture
+			capture.DownstreamRequest.Enabled = true
+			capture.DownstreamRequest.IncludeFields = map[string]string{"text": "{{.Args.text}}"}
+			capture.DownstreamRequest.MaxFieldLength = tc.limit
+			capture.DownstreamRequest.BodyEnabled = true
+			capture.DownstreamRequest.BodyMaxLength = tc.limit
+			capture.DownstreamError.Enabled = true
+			capture.DownstreamError.MaxBodyLength = tc.limit
+			capture.DownstreamResponse.Enabled = true
+			capture.DownstreamResponse.MaxBodyLength = tc.limit
+			tool := &config.ToolConfig{
+				Name: "text", Method: http.MethodPost, Endpoint: downstream.URL,
+				RequestBody: "{{.Args.text}}",
+			}
+			c, _ := newGin()
+			conn := &fakeConnExec{meta: &session.Meta{ID: "sid", Request: &session.RequestInfo{Headers: map[string]string{}}}}
+			result, err := server.executeHTTPTool(c, conn, tool, map[string]any{"text": tc.body}, nil)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.Equal(t, tc.body, <-received)
+			require.Len(t, result.Content, 1)
+			content, ok := result.Content[0].(*mcp.TextContent)
+			require.True(t, ok)
+			assert.Equal(t, tc.body, content.Text)
+			assert.True(t, result.IsError)
+
+			spans := recorder.Ended()
+			requireOTLPExport(t, spans)
+			found := false
+			for _, span := range spans {
+				if span.Name() != cnst.SpanHTTPToolExecute {
+					continue
+				}
+				found = true
+				attrs := map[string]string{}
+				for _, attr := range span.Attributes() {
+					attrs[string(attr.Key)] = attr.Value.AsString()
+				}
+				for _, key := range []string{cnst.AttrDownstreamArgPrefix + "text", cnst.AttrDownstreamReqBody, cnst.AttrHTTPErrorPreview, cnst.AttrHTTPRespBody} {
+					value, exists := attrs[key]
+					require.True(t, exists, "missing attribute %s", key)
+					assert.Equal(t, tc.want, value, key)
+				}
+			}
+			require.True(t, found, "tool execution span missing")
+		})
+	}
 }

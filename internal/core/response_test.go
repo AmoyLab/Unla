@@ -15,7 +15,15 @@ import (
 	"github.com/amoylab/unla/pkg/mcp"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	collector "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 type fakeConn struct {
@@ -240,4 +248,74 @@ func TestSendAcceptedResponse(t *testing.T) {
 	c2.Set("logger", zap.NewNop())
 	s.sendAcceptedResponse(c2)
 	assert.Equal(t, http.StatusAccepted, w2.Code)
+}
+
+type marshalingTraceClient struct{}
+
+func (*marshalingTraceClient) Start(context.Context) error { return nil }
+func (*marshalingTraceClient) Stop(context.Context) error  { return nil }
+func (*marshalingTraceClient) UploadTraces(_ context.Context, spans []*tracepb.ResourceSpans) error {
+	_, err := proto.Marshal(&collector.ExportTraceServiceRequest{ResourceSpans: spans})
+	return err
+}
+
+func recordTraceSpans(t *testing.T) (*sdktrace.TracerProvider, *tracetest.SpanRecorder) {
+	t.Helper()
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+	previous := otel.GetTracerProvider()
+	otel.SetTracerProvider(provider)
+	t.Cleanup(func() {
+		otel.SetTracerProvider(previous)
+		require.NoError(t, provider.Shutdown(context.Background()))
+	})
+	return provider, recorder
+}
+
+func requireOTLPExport(t *testing.T, spans []sdktrace.ReadOnlySpan) {
+	t.Helper()
+	require.NotEmpty(t, spans)
+	exporter, err := otlptrace.New(context.Background(), &marshalingTraceClient{})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, exporter.Shutdown(context.Background())) }()
+	require.NoError(t, exporter.ExportSpans(context.Background(), spans))
+}
+
+func TestToolErrorTraceUTF8(t *testing.T) {
+	for _, tc := range []struct{ name, message, want string }{
+		{"Chinese byte boundary", "x" + strings.Repeat("中", 60), "x" + strings.Repeat("中", 39)},
+		{"emoji byte boundary", "x" + strings.Repeat("😀", 60), "x" + strings.Repeat("😀", 29)},
+		{"invalid bytes", "error: \xff", "error: �"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			provider, recorder := recordTraceSpans(t)
+			c, w := newGin()
+			ctx, span := provider.Tracer("test").Start(c.Request.Context(), "tool error")
+			c.Request = c.Request.WithContext(ctx)
+			server := &Server{logger: zap.NewNop()}
+			conn := &fakeConn{meta: &session.Meta{ID: "sid"}}
+			server.sendToolExecutionError(c, conn, mcp.JSONRPCRequest{Id: 1, Method: mcp.ToolsCall}, errors.New(tc.message), nil, false)
+			span.End()
+			assert.Equal(t, http.StatusOK, w.Code)
+			spans := recorder.Ended()
+			require.Len(t, spans, 1)
+			requireOTLPExport(t, spans)
+			assert.Equal(t, tc.want, spans[0].Status().Description)
+		})
+	}
+}
+
+func TestProtocolErrorTraceUTF8(t *testing.T) {
+	provider, recorder := recordTraceSpans(t)
+	c, w := newGin()
+	ctx, span := provider.Tracer("test").Start(c.Request.Context(), "protocol error")
+	c.Request = c.Request.WithContext(ctx)
+	server := &Server{logger: zap.NewNop()}
+	server.sendProtocolError(c, 1, "invalid \xff", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
+	span.End()
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	spans := recorder.Ended()
+	require.Len(t, spans, 1)
+	requireOTLPExport(t, spans)
+	assert.Equal(t, "invalid �", spans[0].Status().Description)
 }

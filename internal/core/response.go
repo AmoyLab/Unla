@@ -8,6 +8,7 @@ import (
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
+	"github.com/amoylab/unla/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -32,7 +33,7 @@ func (s *Server) sendProtocolErrorWithData(c *gin.Context, id any, message strin
 
 	// Annotate active span with a concise error reason for observability
 	if span := oteltrace.SpanFromContext(c.Request.Context()); span != nil {
-		reason := traceText(message, 0)
+		reason := utils.TruncateUTF8(message, 0)
 		span.SetStatus(codes.Error, reason)
 		span.SetAttributes(
 			attribute.String(cnst.AttrErrorReason, reason),
@@ -67,7 +68,7 @@ func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection,
 
 	// Tag current HTTP span with a brief error reason; keep it concise
 	if span := oteltrace.SpanFromContext(c.Request.Context()); span != nil {
-		reason := traceText(err.Error(), 120)
+		reason := utils.TruncateUTF8(err.Error(), 120)
 		span.SetStatus(codes.Error, reason)
 		span.SetAttributes(
 			attribute.String(cnst.AttrErrorReason, reason),
