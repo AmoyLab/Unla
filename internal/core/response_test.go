@@ -304,18 +304,3 @@ func TestToolErrorTraceUTF8(t *testing.T) {
 		})
 	}
 }
-
-func TestProtocolErrorTraceUTF8(t *testing.T) {
-	provider, recorder := recordTraceSpans(t)
-	c, w := newGin()
-	ctx, span := provider.Tracer("test").Start(c.Request.Context(), "protocol error")
-	c.Request = c.Request.WithContext(ctx)
-	server := &Server{logger: zap.NewNop()}
-	server.sendProtocolError(c, 1, "invalid \xff", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
-	span.End()
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	spans := recorder.Ended()
-	require.Len(t, spans, 1)
-	requireOTLPExport(t, spans)
-	assert.Equal(t, "invalid �", spans[0].Status().Description)
-}

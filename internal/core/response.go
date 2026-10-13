@@ -33,10 +33,9 @@ func (s *Server) sendProtocolErrorWithData(c *gin.Context, id any, message strin
 
 	// Annotate active span with a concise error reason for observability
 	if span := oteltrace.SpanFromContext(c.Request.Context()); span != nil {
-		reason := utils.TruncateUTF8(message, 0)
-		span.SetStatus(codes.Error, reason)
+		span.SetStatus(codes.Error, message)
 		span.SetAttributes(
-			attribute.String(cnst.AttrErrorReason, reason),
+			attribute.String(cnst.AttrErrorReason, message),
 			attribute.Int(cnst.AttrMCPErrorCode, bizCode),
 		)
 	}
