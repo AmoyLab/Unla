@@ -25,14 +25,13 @@ func SplitByMultipleDelimiters(s string, delimiters ...string) []string {
 	return re.Split(s, -1)
 }
 
-// TruncateUTF8 replaces invalid UTF-8 with U+FFFD and truncates at a complete
-// character boundary within maxBytes. Nonpositive limits leave the length unlimited.
+// TruncateUTF8 truncates valid UTF-8 text at a complete character boundary
+// within maxBytes. Nonpositive limits leave the length unlimited.
 func TruncateUTF8(text string, maxBytes int) string {
-	text = strings.ToValidUTF8(text, "\uFFFD")
 	if maxBytes <= 0 || len(text) <= maxBytes {
 		return text
 	}
-	for !utf8.RuneStart(text[maxBytes]) {
+	for maxBytes > 0 && !utf8.RuneStart(text[maxBytes]) {
 		maxBytes--
 	}
 	return text[:maxBytes]
