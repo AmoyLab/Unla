@@ -32,9 +32,10 @@ func (s *Server) sendProtocolErrorWithData(c *gin.Context, id any, message strin
 
 	// Annotate active span with a concise error reason for observability
 	if span := oteltrace.SpanFromContext(c.Request.Context()); span != nil {
-		span.SetStatus(codes.Error, message)
+		reason := traceText(message, 0)
+		span.SetStatus(codes.Error, reason)
 		span.SetAttributes(
-			attribute.String(cnst.AttrErrorReason, message),
+			attribute.String(cnst.AttrErrorReason, reason),
 			attribute.Int(cnst.AttrMCPErrorCode, bizCode),
 		)
 	}
@@ -66,10 +67,7 @@ func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection,
 
 	// Tag current HTTP span with a brief error reason; keep it concise
 	if span := oteltrace.SpanFromContext(c.Request.Context()); span != nil {
-		reason := err.Error()
-		if len(reason) > 120 { // avoid long logs in traces
-			reason = reason[:120]
-		}
+		reason := traceText(err.Error(), 120)
 		span.SetStatus(codes.Error, reason)
 		span.SetAttributes(
 			attribute.String(cnst.AttrErrorReason, reason),
