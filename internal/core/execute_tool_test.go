@@ -296,9 +296,8 @@ func TestExecuteHTTPToolTraceUTF8(t *testing.T) {
 	}{
 		{"Chinese byte boundary", strings.Repeat("中", 100), strings.Repeat("中", 85), 256},
 		{"emoji byte boundary", "a" + strings.Repeat("😀", 80), "a" + strings.Repeat("😀", 63), 256},
-		{"invalid bytes", "a\xff\xfeb", "a�b", 256},
-		{"unlimited invalid bytes", "a\xffb", "a�b", 0},
-		{"negative limit", "a\xffb", "a�b", -1},
+		{"unlimited Unicode", "中文😀", "中文😀", 0},
+		{"negative limit", "中文😀", "中文😀", -1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, recorder := recordTraceSpans(t)

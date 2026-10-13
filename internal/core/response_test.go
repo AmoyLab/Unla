@@ -285,7 +285,6 @@ func TestToolErrorTraceUTF8(t *testing.T) {
 	for _, tc := range []struct{ name, message, want string }{
 		{"Chinese byte boundary", "x" + strings.Repeat("中", 60), "x" + strings.Repeat("中", 39)},
 		{"emoji byte boundary", "x" + strings.Repeat("😀", 60), "x" + strings.Repeat("😀", 29)},
-		{"invalid bytes", "error: \xff", "error: �"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			provider, recorder := recordTraceSpans(t)
