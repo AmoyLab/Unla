@@ -82,7 +82,7 @@ const AtlasCloud: ModelProviderCard = {
     'Atlas Cloud 是一个 OpenAI 兼容的统一网关，通过单一 API 接入 100+ 大语言模型，涵盖 OpenAI、Anthropic、DeepSeek、Qwen、Z.AI、Moonshot、MiniMax 等厂商，模型 ID 采用 `vendor/model` 格式。',
   id: 'atlascloud',
   modelList: { showModelFetcher: true },
-  modelsUrl: 'https://www.atlascloud.ai/',
+  modelsUrl: 'https://www.atlascloud.ai/models',
   name: 'Atlas Cloud',
   proxyUrl: {
     placeholder: 'https://api.atlascloud.ai/v1',
