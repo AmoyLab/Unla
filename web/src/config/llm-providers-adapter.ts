@@ -56,6 +56,7 @@ const getDefaultCheckModel = (providerId: string): string => {
     'baichuan': 'Baichuan2-Turbo',
     'minimax': 'abab6.5s-chat',
     'openrouter': 'openrouter/auto',
+    'atlascloud': 'openai/gpt-4.1-mini',
     'huggingface': 'mistralai/Mistral-7B-Instruct-v0.3',
     'groq': 'llama3-8b-8192',
     'perplexity': 'llama-3.1-sonar-small-128k-online',
@@ -129,6 +130,9 @@ export const getDefaultBaseURL = (providerId: string): string => {
     
     // OpenRouter
     'openrouter': 'https://openrouter.ai/api/v1',
+
+    // Atlas Cloud
+    'atlascloud': 'https://api.atlascloud.ai/v1',
     
     // Cohere
     'cohere': 'https://api.cohere.ai/compatibility/v1',
