@@ -224,7 +224,11 @@ func (s *RedisStorage) DeleteToken(ctx context.Context, accessToken string) erro
 	return s.client.Del(ctx, tokenPrefix+accessToken).Err()
 }
 
-// DeleteTokensByClientID deletes all tokens for a client
+// DeleteTokensByClientID deletes tokens belonging to a client.
+//
+// Warning: in Redis Cluster mode, SCAN does not iterate over all primary nodes.
+// This method may leave tokens undeleted even when it returns nil; do not rely
+// on it to revoke all tokens for a client in Cluster mode.
 func (s *RedisStorage) DeleteTokensByClientID(ctx context.Context, clientID string) error {
 	// Get all tokens
 	iter := s.client.Scan(ctx, 0, tokenPrefix+"*", 0).Iterator()
