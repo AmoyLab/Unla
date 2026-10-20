@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/amoylab/unla/internal/common/cnst"
-	"github.com/amoylab/unla/internal/redisclient"
+	"github.com/amoylab/unla/pkg/utils"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -26,28 +26,28 @@ type RedisNotifier struct {
 
 // NewRedisNotifier creates a new Redis-based notifier
 func NewRedisNotifier(logger *zap.Logger, clusterType, addr, masterName, username, password, sentinelUsername, sentinelPassword string, db int, streamName string, role config.NotifierRole) (*RedisNotifier, error) {
-	client, err := redisclient.New(clusterType, redis.UniversalOptions{
-		Addrs:            []string{addr},
-		MasterName:       masterName,
-		Username:         username,
-		Password:         password,
-		SentinelUsername: sentinelUsername,
-		SentinelPassword: sentinelPassword,
-		DB:               db,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure Redis for configuration notifier: %w", err)
+	addrs := utils.SplitByMultipleDelimiters(addr, ";", ",")
+	redisOptions := &redis.UniversalOptions{
+		Addrs:    addrs,
+		Username: username,
+		Password: password,
 	}
+	redisOptions.IsClusterMode = clusterType == cnst.RedisClusterTypeCluster
+	if clusterType == cnst.RedisClusterTypeSentinel {
+		redisOptions.MasterName = masterName
+		redisOptions.SentinelUsername = sentinelUsername
+		redisOptions.SentinelPassword = sentinelPassword
+	}
+	if clusterType != cnst.RedisClusterTypeCluster {
+		// can not set db in cluster mode
+		redisOptions.DB = db
+	}
+	client := redis.NewUniversalClient(redisOptions)
 
 	// Test connection
 	if err := client.Ping(context.Background()).Err(); err != nil {
-		_ = client.Close()
-		return nil, fmt.Errorf("failed to connect to Redis for configuration notifier: %w", err)
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
-	logger.Info("Initialized Redis client",
-		zap.String("component", "configuration notifier"),
-		zap.String("mode", clusterType),
-		zap.String("client_type", fmt.Sprintf("%T", client)))
 
 	notifier := &RedisNotifier{
 		logger:     logger.Named("notifier.redis"),

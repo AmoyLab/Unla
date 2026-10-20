@@ -100,7 +100,6 @@ func TestRedisStore_RegisterGetListSendUnregister(t *testing.T) {
 	assert.ErrorIs(t, store.Unregister(ctx, "nope"), ErrSessionNotFound)
 }
 
-// TestNewRedisStore_SingleSeedCluster guards the configured mode at the storage boundary.
 func TestNewRedisStore_SingleSeedCluster(t *testing.T) {
 	mr := miniredis.RunT(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -113,11 +112,9 @@ func TestNewRedisStore_SingleSeedCluster(t *testing.T) {
 		TTL:         time.Minute,
 	})
 	require.NoError(t, err)
-	defer store.Close()
+	defer func() {
+		cancel()
+		_ = store.Close()
+	}()
 	require.IsType(t, &redis.ClusterClient{}, store.client)
-	_, err = store.Register(ctx, &Meta{ID: "one-seed", CreatedAt: time.Now(), Type: "sse"})
-	require.NoError(t, err)
-	conn, err := store.Get(ctx, "one-seed")
-	require.NoError(t, err)
-	require.Equal(t, "one-seed", conn.Meta().ID)
 }

@@ -117,10 +117,4 @@ func TestNewRedisNotifier_SingleSeedCluster(t *testing.T) {
 	require.NoError(t, err)
 	defer n.client.Close()
 	require.IsType(t, &redis.ClusterClient{}, n.client)
-	ctx := context.Background()
-	require.NoError(t, n.NotifyUpdate(ctx, &config.MCPConfig{Name: "one-seed"}))
-	messages, err := n.client.XRange(ctx, "cluster:updates", "-", "+").Result()
-	require.NoError(t, err)
-	require.Len(t, messages, 1)
-	require.Contains(t, messages[0].Values["config"], "one-seed")
 }

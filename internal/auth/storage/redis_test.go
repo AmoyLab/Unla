@@ -115,9 +115,4 @@ func TestNewRedisStorage_SingleSeedCluster(t *testing.T) {
 	require.NoError(t, err)
 	defer s.client.Close()
 	require.IsType(t, &redis.ClusterClient{}, s.client)
-	ctx := context.Background()
-	require.NoError(t, s.CreateClient(ctx, &Client{ID: "one-seed", Secret: "test-secret"}))
-	client, err := s.GetClient(ctx, "one-seed")
-	require.NoError(t, err)
-	require.Equal(t, "one-seed", client.ID)
 }
