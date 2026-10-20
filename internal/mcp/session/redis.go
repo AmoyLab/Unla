@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
-	"github.com/amoylab/unla/internal/redisclient"
+	"github.com/amoylab/unla/pkg/utils"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -32,28 +33,28 @@ var _ Store = (*RedisStore)(nil)
 
 // NewRedisStore creates a new Redis-based session store
 func NewRedisStore(ctx context.Context, logger *zap.Logger, cfg config.SessionRedisConfig) (*RedisStore, error) {
-	client, err := redisclient.New(cfg.ClusterType, redis.UniversalOptions{
-		Addrs:            []string{cfg.Addr},
-		MasterName:       cfg.MasterName,
-		Username:         cfg.Username,
-		Password:         cfg.Password,
-		SentinelUsername: cfg.SentinelUsername,
-		SentinelPassword: cfg.SentinelPassword,
-		DB:               cfg.DB,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure Redis for session storage: %w", err)
+	addrs := utils.SplitByMultipleDelimiters(cfg.Addr, ";", ",")
+	redisOptions := &redis.UniversalOptions{
+		Addrs:    addrs,
+		Username: cfg.Username,
+		Password: cfg.Password,
 	}
+	redisOptions.IsClusterMode = cfg.ClusterType == cnst.RedisClusterTypeCluster
+	if cfg.ClusterType == cnst.RedisClusterTypeSentinel {
+		redisOptions.MasterName = cfg.MasterName
+		redisOptions.SentinelUsername = cfg.SentinelUsername
+		redisOptions.SentinelPassword = cfg.SentinelPassword
+	}
+	if cfg.ClusterType != cnst.RedisClusterTypeCluster {
+		// can not set db in cluster mode
+		redisOptions.DB = cfg.DB
+	}
+	client := redis.NewUniversalClient(redisOptions)
 
 	// Test connection
-	if err := client.Ping(ctx).Err(); err != nil {
-		_ = client.Close()
-		return nil, fmt.Errorf("failed to connect to Redis for session storage: %w", err)
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
-	logger.Info("Initialized Redis client",
-		zap.String("component", "session storage"),
-		zap.String("mode", cfg.ClusterType),
-		zap.String("client_type", fmt.Sprintf("%T", client)))
 
 	prefix := cfg.Prefix
 	if prefix == "" {

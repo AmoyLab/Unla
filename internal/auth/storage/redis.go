@@ -8,8 +8,9 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/errorx"
-	"github.com/amoylab/unla/internal/redisclient"
+	"github.com/amoylab/unla/pkg/utils"
 )
 
 // RedisStorage implements the Store interface using Redis
@@ -19,24 +20,28 @@ type RedisStorage struct {
 
 // NewRedisStorage creates a new Redis storage instance
 func NewRedisStorage(clusterType, addr, masterName string, username, password, sentinelUsername, sentinelPassword string, db int) (*RedisStorage, error) {
-	client, err := redisclient.New(clusterType, redis.UniversalOptions{
-		Addrs:            []string{addr},
-		MasterName:       masterName,
-		Username:         username,
-		Password:         password,
-		SentinelUsername: sentinelUsername,
-		SentinelPassword: sentinelPassword,
-		DB:               db,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure Redis for OAuth storage: %w", err)
+	addrs := utils.SplitByMultipleDelimiters(addr, ";", ",")
+	redisOptions := &redis.UniversalOptions{
+		Addrs:    addrs,
+		Username: username,
+		Password: password,
 	}
+	redisOptions.IsClusterMode = clusterType == cnst.RedisClusterTypeCluster
+	if clusterType == cnst.RedisClusterTypeSentinel {
+		redisOptions.MasterName = masterName
+		redisOptions.SentinelUsername = sentinelUsername
+		redisOptions.SentinelPassword = sentinelPassword
+	}
+	if clusterType != cnst.RedisClusterTypeCluster {
+		// can not set db in cluster mode
+		redisOptions.DB = db
+	}
+	client := redis.NewUniversalClient(redisOptions)
 
 	// Test connection
 	ctx := context.Background()
 	if err := client.Ping(ctx).Err(); err != nil {
-		_ = client.Close()
-		return nil, fmt.Errorf("failed to connect to Redis for OAuth storage: %w", err)
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
 	return &RedisStorage{
