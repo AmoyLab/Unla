@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/require"
+
 	miniredis "github.com/alicebob/miniredis/v2"
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
@@ -95,4 +98,26 @@ func TestRedisStore_RegisterGetListSendUnregister(t *testing.T) {
 	assert.ErrorIs(t, err, ErrSessionNotFound)
 	// Unregister unknown
 	assert.ErrorIs(t, store.Unregister(ctx, "nope"), ErrSessionNotFound)
+}
+
+// TestNewRedisStore_SingleSeedCluster guards the configured mode at the storage boundary.
+func TestNewRedisStore_SingleSeedCluster(t *testing.T) {
+	mr := miniredis.RunT(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	store, err := NewRedisStore(ctx, zap.NewNop(), config.SessionRedisConfig{
+		ClusterType: cnst.RedisClusterTypeCluster,
+		Addr:        mr.Addr(),
+		Topic:       "cluster:sessions",
+		Prefix:      "cluster-session",
+		TTL:         time.Minute,
+	})
+	require.NoError(t, err)
+	defer store.Close()
+	require.IsType(t, &redis.ClusterClient{}, store.client)
+	_, err = store.Register(ctx, &Meta{ID: "one-seed", CreatedAt: time.Now(), Type: "sse"})
+	require.NoError(t, err)
+	conn, err := store.Get(ctx, "one-seed")
+	require.NoError(t, err)
+	require.Equal(t, "one-seed", conn.Meta().ID)
 }

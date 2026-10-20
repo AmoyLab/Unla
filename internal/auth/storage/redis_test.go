@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/require"
+
 	miniredis "github.com/alicebob/miniredis/v2"
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/errorx"
@@ -104,4 +107,17 @@ func TestNewRedisStorage_ConnectionError(t *testing.T) {
 	s, err := NewRedisStorage(cnst.RedisClusterTypeSingle, "127.0.0.1:0", "", "", "", "", "", 0)
 	assert.Nil(t, s)
 	assert.Error(t, err)
+}
+
+func TestNewRedisStorage_SingleSeedCluster(t *testing.T) {
+	mr := miniredis.RunT(t)
+	s, err := NewRedisStorage(cnst.RedisClusterTypeCluster, mr.Addr(), "", "", "", "", "", 0)
+	require.NoError(t, err)
+	defer s.client.Close()
+	require.IsType(t, &redis.ClusterClient{}, s.client)
+	ctx := context.Background()
+	require.NoError(t, s.CreateClient(ctx, &Client{ID: "one-seed", Secret: "test-secret"}))
+	client, err := s.GetClient(ctx, "one-seed")
+	require.NoError(t, err)
+	require.Equal(t, "one-seed", client.ID)
 }

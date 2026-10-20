@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/require"
+
 	miniredis "github.com/alicebob/miniredis/v2"
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
@@ -105,4 +108,19 @@ func TestNewRedisNotifier_ConnectionError(t *testing.T) {
 	n, err := NewRedisNotifier(zap.NewNop(), cnst.RedisClusterTypeSingle, "127.0.0.1:0", "", "", "", "", "", 0, "stream", config.RoleBoth)
 	assert.Nil(t, n)
 	assert.Error(t, err)
+}
+
+func TestNewRedisNotifier_SingleSeedCluster(t *testing.T) {
+	mr := miniredis.RunT(t)
+	n, err := NewRedisNotifier(zap.NewNop(), cnst.RedisClusterTypeCluster, mr.Addr(),
+		"", "", "", "", "", 0, "cluster:updates", config.RoleBoth)
+	require.NoError(t, err)
+	defer n.client.Close()
+	require.IsType(t, &redis.ClusterClient{}, n.client)
+	ctx := context.Background()
+	require.NoError(t, n.NotifyUpdate(ctx, &config.MCPConfig{Name: "one-seed"}))
+	messages, err := n.client.XRange(ctx, "cluster:updates", "-", "+").Result()
+	require.NoError(t, err)
+	require.Len(t, messages, 1)
+	require.Contains(t, messages[0].Values["config"], "one-seed")
 }
