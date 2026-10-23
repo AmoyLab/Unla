@@ -112,7 +112,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	for path, pathItem := range doc.Paths.Map() {
 		// Create a tool for each HTTP method
 		for method, operation := range pathItem.Operations() {
-			if method == "options" {
+			if strings.EqualFold(method, "options") {
 				continue // Skip CORS options
 			}
 
