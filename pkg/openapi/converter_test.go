@@ -748,6 +748,7 @@ func TestConverter_Convert_SkipOptionsAndKeepSummaryAsDescription(t *testing.T) 
 
 	cfg, err := converter.ConvertFromJSON([]byte(spec))
 	assert.NoError(t, err)
+	assert.Len(t, cfg.Tools, 1)
 	// Ensure GET tool is present with summary used as description
 	found := false
 	for _, tcfg := range cfg.Tools {
