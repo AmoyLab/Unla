@@ -773,6 +773,7 @@
         "ppio": "PPIO provides stable and cost-effective open-source model API services, supporting the full range of DeepSeek, Llama, Qwen, and other industry-leading large models.",
         "qiniu": "Qiniu, as an established cloud service provider, offers stable and cost-effective real-time and batch AI inference services, easy to use.",
         "qwen": "Qwen is an ultra-large-scale language model independently developed by Alibaba Cloud, with strong natural language understanding and generation capabilities. It can answer questions, create text content, express opinions, and write code, among other functions, playing a role in various fields.",
+        "runcrate": "Runcrate offers an OpenAI-compatible inference API for open-weight models such as DeepSeek, GLM, Qwen, Kimi and gpt-oss.",
         "sambanova": "SambaNova Cloud enables developers to easily use the best open-source models and enjoy the fastest inference speeds.",
         "search1api": "Search1API provides access to the DeepSeek series models, which can connect to the internet as needed, including standard and fast versions, supporting a variety of parameter scale model selections.",
         "sensenova": "SenseTime's daily renewal, relying on the strong基础支撑 of SenseTime's大装置, provides efficient and easy-to-use全栈大模型服务.",

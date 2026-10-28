@@ -65,7 +65,8 @@ const getDefaultCheckModel = (providerId: string): string => {
     'mistral': 'mistral-large-latest',
     'cohere': 'command-r-plus',
     'ai21': 'jamba-1.5-large',
-    'xai': 'grok-beta'
+    'xai': 'grok-beta',
+    'runcrate': 'deepseek-ai/DeepSeek-V4.1-Flash'
   };
   return checkModels[providerId] || 'gpt-3.5-turbo';
 };
@@ -150,6 +151,7 @@ export const getDefaultBaseURL = (providerId: string): string => {
     'search1api': 'https://api.search1api.com/v1',
     'infiniai': 'https://cloud.infini-ai.com/maas/v1',
     'sambanova': 'https://api.sambanova.ai/v1',
+    'runcrate': 'https://api.runcrate.ai/v1',
     'jina': 'https://deepsearch.jina.ai/v1',
     'xai': 'https://api.x.ai/v1',
     'higress': 'https://127.0.0.1:8080/v1',

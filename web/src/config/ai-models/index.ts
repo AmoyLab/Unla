@@ -33,6 +33,7 @@ import { default as perplexity } from './perplexity';
 import { default as ppio } from './ppio';
 import { default as qiniu } from './qiniu';
 import { default as qwen } from './qwen';
+import { default as runcrate } from './runcrate';
 import { default as sambanova } from './sambanova';
 import { default as search1api } from './search1api';
 import { default as sensenova } from './sensenova';
@@ -95,6 +96,7 @@ export const getModelsByProvider = (providerId: string): AllAIModelCard[] => {
     ppio,
     qiniu,
     qwen,
+    runcrate,
     sambanova,
     search1api,
     sensenova,
@@ -155,6 +157,7 @@ export const getAllProviderIds = (): string[] => {
     'ppio',
     'qiniu',
     'qwen',
+    'runcrate',
     'sambanova',
     'search1api',
     'sensenova',
@@ -238,6 +241,7 @@ export const LOBE_DEFAULT_MODEL_LIST = {
   ppio,
   qiniu,
   qwen,
+  runcrate,
   sambanova,
   search1api,
   sensenova,
@@ -292,6 +296,7 @@ export { default as perplexity } from './perplexity';
 export { default as ppio } from './ppio';
 export { default as qiniu } from './qiniu';
 export { default as qwen } from './qwen';
+export { default as runcrate } from './runcrate';
 export { default as sambanova } from './sambanova';
 export { default as search1api } from './search1api';
 export { default as sensenova } from './sensenova';

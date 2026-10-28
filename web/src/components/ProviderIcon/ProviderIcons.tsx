@@ -62,6 +62,7 @@ export const PPIO = createSVGIcon('ppio.svg');
 export const Jina = createSVGIcon('jina.svg');
 export const Volcengine = createSVGIcon('volcengine.svg');
 export const SambaNova = createSVGIcon('sambanova.svg');
+export const Runcrate = createSVGIcon('runcrate.svg');
 export const Cohere = createSVGIcon('cohere.svg');
 export const Search1API = createSVGIcon('search1api.svg');
 export const Xinference = createSVGIcon('xinference.svg');
