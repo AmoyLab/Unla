@@ -140,6 +140,9 @@ For more usage patterns, configuration examples, and integration guides, please 
 
 👉 **https://docs.unla.amoylab.com**
 
+Optional offline delivery-evidence gate before enabling a proxied MCP upstream: [`docs/toa-optional-gateway-gate.md`](docs/toa-optional-gateway-gate.md) · [`examples/toa-after-gateway.yml`](examples/toa-after-gateway.yml). [TOA](https://github.com/Carmel-Labs-Inc/toa) is not per-call signing and does not replace Unla OAuth or config hot-reload.
+
+
 ---
 
 ## 📄 License
