@@ -22,6 +22,7 @@ export function MCPServersConfig({
       command: "",
       args: [],
       env: {},
+      headers: {},
       policy: "onDemand",
       preinstalled: false
     }],
@@ -112,6 +113,150 @@ export function MCPServersConfig({
     updateConfig({ mcpServers: updatedServers });
   };
 
+  const isAuthorizationKey = (key: string) => key.toLowerCase() === 'authorization';
+
+  const getAuthorizationToken = (headers?: Record<string, string>) => {
+    if (!headers) {
+      return '';
+    }
+    const entry = Object.entries(headers).find(([key]) => isAuthorizationKey(key));
+    if (!entry) {
+      return '';
+    }
+    const value = entry[1] || '';
+    if (value.toLowerCase().startsWith('bearer ')) {
+      return value.slice(7);
+    }
+    return value;
+  };
+
+  const setAuthorizationToken = (serverIndex: number, token: string) => {
+    const updatedServers = [...mcpServers];
+    const server = updatedServers[serverIndex];
+    const headers = { ...(server.headers || {}) };
+
+    for (const key of Object.keys(headers)) {
+      if (isAuthorizationKey(key)) {
+        delete headers[key];
+      }
+    }
+
+    const trimmed = token.trim();
+    if (trimmed) {
+      headers.Authorization = `Bearer ${trimmed}`;
+    }
+
+    updatedServers[serverIndex] = {
+      ...server,
+      headers
+    };
+
+    updateConfig({ mcpServers: updatedServers });
+  };
+
+  const getEditableHeaderKeys = (headers?: Record<string, string>) =>
+    Object.keys(headers || {}).filter((key) => !isAuthorizationKey(key));
+
+  const updateHeader = (serverIndex: number, headerIndex: number, field: 'key' | 'value', value: string) => {
+    const updatedServers = [...mcpServers];
+    const server = updatedServers[serverIndex];
+    const headers = { ...(server.headers || {}) };
+    const headerKeys = getEditableHeaderKeys(headers);
+    const key = headerKeys[headerIndex];
+
+    if (!key) {
+      return;
+    }
+
+    if (field === 'key') {
+      const newKey = value;
+
+      // Disallow empty header keys
+      if (!newKey) {
+        return;
+      }
+
+      // Disallow overwriting an existing header with a different key
+      if (newKey !== key && Object.prototype.hasOwnProperty.call(headers, newKey)) {
+        return;
+      }
+
+      if (key !== newKey) {
+        headers[newKey] = headers[key];
+        delete headers[key];
+      }
+    } else {
+      headers[key] = value;
+    }
+
+    updatedServers[serverIndex] = {
+      ...server,
+      headers
+    };
+
+    updateConfig({ mcpServers: updatedServers });
+  };
+
+  const addHeader = (serverIndex: number) => {
+    const updatedServers = [...mcpServers];
+    const server = updatedServers[serverIndex];
+    const headers = { ...(server.headers || {}) };
+    const headerKeys = getEditableHeaderKeys(headers);
+
+    let newKey = "Content-Type";
+    let count = 1;
+
+    const commonHeaders = [
+      "Accept",
+      "X-API-Key",
+      "User-Agent",
+    ];
+
+    for (const header of commonHeaders) {
+      if (!headerKeys.includes(header)) {
+        newKey = header;
+        break;
+      }
+    }
+
+    if (headerKeys.includes(newKey)) {
+      while (headerKeys.includes(`X-Header-${count}`)) {
+        count++;
+      }
+      newKey = `X-Header-${count}`;
+    }
+
+    headers[newKey] = "";
+
+    updatedServers[serverIndex] = {
+      ...server,
+      headers
+    };
+
+    updateConfig({ mcpServers: updatedServers });
+  };
+
+  const removeHeader = (serverIndex: number, headerIndex: number) => {
+    const updatedServers = [...mcpServers];
+    const server = updatedServers[serverIndex];
+    const headers = { ...(server.headers || {}) };
+    const headerKeys = getEditableHeaderKeys(headers);
+    const keyToRemove = headerKeys[headerIndex];
+
+    if (!keyToRemove) {
+      return;
+    }
+
+    delete headers[keyToRemove];
+
+    updatedServers[serverIndex] = {
+      ...server,
+      headers
+    };
+
+    updateConfig({ mcpServers: updatedServers });
+  };
+
   const addEnvVariable = (serverIndex: number) => {
     const updatedServers = [...mcpServers];
     const server = updatedServers[serverIndex];
@@ -176,6 +321,7 @@ export function MCPServersConfig({
       command: "",
       args: [],
       env: {},
+      headers: {},
       policy: "onDemand",
       preinstalled: false
     };
@@ -312,6 +458,58 @@ export function MCPServersConfig({
                     value={server.url || ''}
                     onChange={(e) => updateServer(index, 'url', e.target.value)}
                   />
+
+                  <div className="mt-4">
+                    <Input
+                      label={t('gateway.authorization_bearer')}
+                      value={getAuthorizationToken(server.headers)}
+                      onChange={(e) => setAuthorizationToken(index, e.target.value)}
+                      placeholder={t('gateway.authorization_token_placeholder')}
+                      startContent={<span className="text-default-400 text-sm">Bearer</span>}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium">{t('gateway.mcp_headers')}</h4>
+                      <Button
+                        color="primary"
+                        variant="flat"
+                        size="sm"
+                        startContent={<LocalIcon icon="lucide:plus" />}
+                        onPress={() => addHeader(index)}
+                      >
+                        {t('gateway.add_header')}
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {getEditableHeaderKeys(server.headers).map((key, headerIndex) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <Input
+                            className="flex-1"
+                            value={key}
+                            onChange={(e) => updateHeader(index, headerIndex, 'key', e.target.value)}
+                            placeholder={t('gateway.header_name_placeholder')}
+                          />
+                          <Input
+                            className="flex-1"
+                            value={server.headers?.[key] || ""}
+                            onChange={(e) => updateHeader(index, headerIndex, 'value', e.target.value)}
+                            placeholder={t('gateway.header_value_placeholder')}
+                          />
+                          <Button
+                            color="danger"
+                            variant="flat"
+                            isIconOnly
+                            onPress={() => removeHeader(index, headerIndex)}
+                          >
+                            <LocalIcon icon="lucide:x" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 

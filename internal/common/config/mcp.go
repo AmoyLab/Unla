@@ -83,6 +83,7 @@ type (
 		Args         []string              `json:"args,omitempty" yaml:"args,omitempty"`       // for stdio
 		Env          map[string]string     `json:"env,omitempty" yaml:"env,omitempty"`         // for stdio
 		URL          string                `json:"url,omitempty" yaml:"url,omitempty"`         // for sse and streamable-http
+		Headers      map[string]string     `json:"headers,omitempty" yaml:"headers,omitempty"` // for sse and streamable-http
 		Policy       cnst.MCPStartupPolicy `json:"policy" yaml:"policy"`                       // onStart or onDemand
 		Preinstalled bool                  `json:"preinstalled" yaml:"preinstalled"`           // whether to install this MCP server when mcp-gateway starts
 	}

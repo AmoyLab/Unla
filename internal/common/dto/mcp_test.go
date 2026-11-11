@@ -48,7 +48,9 @@ func TestFromArgConfigsAndItemsConfig(t *testing.T) {
 
 func TestFromMCPServerConfigsAndAuthPrompt(t *testing.T) {
 	ms := []config.MCPServerConfig{{
-		Type: "sse", Name: "n", Command: "cmd", Args: []string{"a"}, Env: map[string]string{"k": "v"}, URL: "u", Policy: "onStart", Preinstalled: true,
+		Type: "sse", Name: "n", Command: "cmd", Args: []string{"a"}, Env: map[string]string{"k": "v"}, URL: "u",
+		Headers: map[string]string{"Authorization": "Bearer token", "X-Req": "v"},
+		Policy:  "onStart", Preinstalled: true,
 	}}
 	out := FromMCPServerConfigs(ms)
 	if assert.Len(t, out, 1) {
@@ -57,6 +59,7 @@ func TestFromMCPServerConfigsAndAuthPrompt(t *testing.T) {
 		assert.Equal(t, "cmd", out[0].Command)
 		assert.Equal(t, []string{"a"}, out[0].Args)
 		assert.Equal(t, "u", out[0].URL)
+		assert.Equal(t, map[string]string{"Authorization": "Bearer token", "X-Req": "v"}, out[0].Headers)
 		assert.Equal(t, "onStart", out[0].Policy)
 		assert.True(t, out[0].Preinstalled)
 	}
