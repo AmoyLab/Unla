@@ -45,6 +45,8 @@ type Transport interface {
 
 	// ListResources fetches the list of available resources
 	ListResources(ctx context.Context) ([]mcp.ResourceSchema, error)
+	// ListResourceTemplates fetches the list of resource templates
+	ListResourceTemplates(ctx context.Context) ([]mcp.ResourceTemplateSchema, error)
 	// ReadResource reads a resource by URI
 	ReadResource(ctx context.Context, uri string) (*mcp.ReadResourceResult, error)
 }

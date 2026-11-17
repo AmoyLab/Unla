@@ -3,6 +3,7 @@ package mcpproxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -179,6 +180,9 @@ func (t *StdioTransport) ListResources(ctx context.Context) ([]mcp.ResourceSchem
 
 	resourcesResult, err := t.client.ListResources(ctx, mcpgo.ListResourcesRequest{})
 	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return []mcp.ResourceSchema{}, nil
+		}
 		return nil, fmt.Errorf("failed to list resources: %w", err)
 	}
 
@@ -189,10 +193,50 @@ func (t *StdioTransport) ListResources(ctx context.Context) ([]mcp.ResourceSchem
 			Name:        r.Name,
 			Description: r.Description,
 			MimeType:    r.MIMEType,
+			Annotations: convertAnnotations(r.Annotations),
 			Meta:        convertMeta(r.Meta),
 		})
 	}
 	return resources, nil
+}
+
+// ListResourceTemplates returns all resource templates exposed by the upstream server
+func (t *StdioTransport) ListResourceTemplates(ctx context.Context) ([]mcp.ResourceTemplateSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, template.NewContext()); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	templatesResult, err := t.client.ListResourceTemplates(ctx, mcpgo.ListResourceTemplatesRequest{})
+	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return []mcp.ResourceTemplateSchema{}, nil
+		}
+		return nil, fmt.Errorf("failed to list resource templates: %w", err)
+	}
+
+	templates := make([]mcp.ResourceTemplateSchema, 0, len(templatesResult.ResourceTemplates))
+	for _, rt := range templatesResult.ResourceTemplates {
+		uriTemplate := ""
+		if rt.URITemplate != nil {
+			uriTemplate = rt.URITemplate.Raw()
+		}
+		templates = append(templates, mcp.ResourceTemplateSchema{
+			URITemplate: uriTemplate,
+			Name:        rt.Name,
+			Description: rt.Description,
+			MimeType:    rt.MIMEType,
+			Annotations: convertAnnotations(rt.Annotations),
+			Meta:        convertMeta(rt.Meta),
+		})
+	}
+	return templates, nil
 }
 
 // ReadResource reads a resource by URI from the upstream server
@@ -212,10 +256,13 @@ func (t *StdioTransport) ReadResource(ctx context.Context, uri string) (*mcp.Rea
 	readRequest.Params.URI = uri
 	readResult, err := t.client.ReadResource(ctx, readRequest)
 	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return &mcp.ReadResourceResult{Contents: []any{}}, nil
+		}
 		return nil, fmt.Errorf("failed to read resource: %w", err)
 	}
 
-	result := &mcp.ReadResourceResult{Meta: convertMeta(readResult.Meta)}
+	result := &mcp.ReadResourceResult{Contents: []any{}, Meta: convertMeta(readResult.Meta)}
 	for _, c := range readResult.Contents {
 		if converted := convertResourceContents(c); converted != nil {
 			result.Contents = append(result.Contents, converted)

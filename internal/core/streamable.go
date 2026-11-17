@@ -179,6 +179,11 @@ func (s *Server) handlePost(c *gin.Context) {
 				http.StatusNotFound, mcp.ErrorCodeRequestTimeout)
 			return
 		}
+		if !s.sessionMatchesURLPrefix(c, conn, "mcp") {
+			s.sendProtocolError(c, req.Id, "Session not found",
+				http.StatusNotFound, mcp.ErrorCodeRequestTimeout)
+			return
+		}
 	}
 
 	s.handleMCPRequest(c, req, conn)
@@ -613,10 +618,40 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		return
 
 	case mcp.ResourcesTemplatesList:
-		// Return an empty resourceTemplates list by default
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
+		}
+
+		var templates []mcp.ResourceTemplateSchema
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			// Config-driven backends currently declare no resource templates
+			templates = []mcp.ResourceTemplateSchema{}
+		case cnst.BackendProtoStdio, cnst.BackendProtoSSE, cnst.BackendProtoStreamable:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch resource templates", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			var err error
+			templates, err = transport.ListResourceTemplates(s.forwardCallHeaders(c))
+			if err != nil {
+				s.getLogger(c).Warn("upstream list resource templates failed",
+					zap.String("prefix", conn.Meta().Prefix), zap.Error(err))
+				s.sendProtocolError(c, req.Id, "Failed to fetch resource templates", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+		default:
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
 		s.sendSuccessResponse(c, conn, req, struct {
-			ResourceTemplates []struct{} `json:"resourceTemplates"`
-		}{ResourceTemplates: []struct{}{}}, false)
+			ResourceTemplates []mcp.ResourceTemplateSchema `json:"resourceTemplates"`
+		}{ResourceTemplates: templates}, false)
 		return
 
 	case mcp.ResourcesRead:
@@ -808,5 +843,34 @@ func (s *Server) getSession(c *gin.Context) session.Connection {
 		s.sendProtocolError(c, nil, "Session not found", http.StatusNotFound, mcp.ErrorCodeRequestTimeout)
 		return nil
 	}
+	if !s.sessionMatchesURLPrefix(c, conn, "mcp") {
+		s.sendProtocolError(c, nil, "Session not found", http.StatusNotFound, mcp.ErrorCodeRequestTimeout)
+		return nil
+	}
 	return conn
+}
+
+// sessionMatchesURLPrefix reports whether the session was established under
+// the prefix carried in the request URL (or its configured public SSE route
+// mapping). Without this check, a caller authenticated for one prefix could
+// supply a session id belonging to another prefix and drive a different
+// backend while its Authorization header is forwarded to the wrong upstream.
+func (s *Server) sessionMatchesURLPrefix(c *gin.Context, conn session.Connection, endpoint string) bool {
+	if conn == nil || conn.Meta() == nil {
+		return false
+	}
+	parts := strings.Split(strings.Trim(c.Request.URL.Path, "/"), "/")
+	if len(parts) < 2 || parts[len(parts)-1] != endpoint {
+		return false
+	}
+	urlPrefix := "/" + strings.Join(parts[:len(parts)-1], "/")
+	sessionPrefix := conn.Meta().Prefix
+	if sessionPrefix == urlPrefix {
+		return true
+	}
+	// SSE endpoints may be republished under a configured public prefix.
+	if mapped := s.state.GetSSEPrefix(sessionPrefix); mapped != "" && mapped == urlPrefix {
+		return true
+	}
+	return false
 }

@@ -281,6 +281,17 @@ func (s *Server) handleMessage(c *gin.Context) {
 		return
 	}
 
+	if !s.sessionMatchesURLPrefix(c, conn, "message") {
+		s.logger.Warn("session prefix does not match request URL",
+			zap.String("session_id", sessionId),
+			zap.String("prefix", conn.Meta().Prefix),
+			zap.String("path", c.Request.URL.Path),
+			zap.String("remote_addr", c.Request.RemoteAddr),
+		)
+		c.String(http.StatusNotFound, "Session not found")
+		return
+	}
+
 	s.logger.Debug("handling message for session",
 		zap.String("session_id", sessionId),
 		zap.String("prefix", conn.Meta().Prefix),
@@ -655,9 +666,38 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			Resources []mcp.ResourceSchema `json:"resources"`
 		}{Resources: resources}, true)
 	case mcp.ResourcesTemplatesList:
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
+		}
+
+		var templates []mcp.ResourceTemplateSchema
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			// Config-driven backends currently declare no resource templates
+			templates = []mcp.ResourceTemplateSchema{}
+		case cnst.BackendProtoStdio, cnst.BackendProtoSSE, cnst.BackendProtoStreamable:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch resource templates", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			var err error
+			templates, err = transport.ListResourceTemplates(s.forwardCallHeaders(c))
+			if err != nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch resource templates", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+		default:
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
 		s.sendSuccessResponse(c, conn, req, struct {
-			ResourceTemplates []struct{} `json:"resourceTemplates"`
-		}{ResourceTemplates: []struct{}{}}, true)
+			ResourceTemplates []mcp.ResourceTemplateSchema `json:"resourceTemplates"`
+		}{ResourceTemplates: templates}, true)
 	case mcp.ResourcesRead:
 		type readParams struct {
 			URI string `json:"uri"`

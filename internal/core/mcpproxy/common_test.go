@@ -196,6 +196,17 @@ func TestConvertToolMeta(t *testing.T) {
 	assert.Equal(t, map[string]any{"a": 1}, convertMeta(meta))
 }
 
+func TestConvertAnnotations(t *testing.T) {
+	assert.Nil(t, convertAnnotations(nil))
+	assert.Nil(t, convertAnnotations(&mcpgo.Annotations{}))
+
+	annotations := convertAnnotations(&mcpgo.Annotations{
+		Audience: []mcpgo.Role{mcpgo.RoleUser},
+	})
+	// Values are JSON-shaped after the wire round-trip.
+	assert.Equal(t, map[string]any{"audience": []any{"user"}}, annotations)
+}
+
 func TestUIExtensionCapability(t *testing.T) {
 	capabilities := uiExtensionCapability()
 	ui, ok := capabilities["io.modelcontextprotocol/ui"].(map[string]any)

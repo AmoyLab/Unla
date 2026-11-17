@@ -161,6 +161,17 @@ type (
 		Name        string         `json:"name"`
 		Description string         `json:"description,omitempty"`
 		MimeType    string         `json:"mimeType,omitempty"`
+		Annotations map[string]any `json:"annotations,omitempty"`
+		Meta        map[string]any `json:"_meta,omitempty"`
+	}
+
+	// ResourceTemplateSchema represents a resource template returned by resources/templates/list
+	ResourceTemplateSchema struct {
+		URITemplate string         `json:"uriTemplate"`
+		Name        string         `json:"name"`
+		Description string         `json:"description,omitempty"`
+		MimeType    string         `json:"mimeType,omitempty"`
+		Annotations map[string]any `json:"annotations,omitempty"`
 		Meta        map[string]any `json:"_meta,omitempty"`
 	}
 

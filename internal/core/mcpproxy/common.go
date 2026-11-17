@@ -32,6 +32,23 @@ func convertMeta(meta *mcpgo.Meta) map[string]any {
 	return out
 }
 
+// convertAnnotations converts mcp-go annotations to a plain map so resource
+// annotations survive the gateway hop.
+func convertAnnotations(a *mcpgo.Annotations) map[string]any {
+	if a == nil {
+		return nil
+	}
+	raw, err := json.Marshal(a)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]any)
+	if json.Unmarshal(raw, &out) != nil || len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 // convertResourceContents converts mcp-go resource contents to local mcp format
 func convertResourceContents(rc mcpgo.ResourceContents) any {
 	switch c := rc.(type) {
