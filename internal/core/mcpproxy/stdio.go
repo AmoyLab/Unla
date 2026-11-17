@@ -65,6 +65,7 @@ func (t *StdioTransport) Start(ctx context.Context, tmplCtx *template.Context) e
 		Name:    cnst.AppName,
 		Version: version.Get(),
 	}
+	initRequest.Params.Capabilities.Extensions = uiExtensionCapability()
 
 	_, err := c.Initialize(ctx, initRequest)
 	if err != nil {
@@ -156,10 +157,71 @@ func (t *StdioTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, erro
 			Name:        schema.Name,
 			Description: schema.Description,
 			InputSchema: inputSchema,
+			Meta:        convertMeta(schema.Meta),
 		}
 	}
 
 	return tools, nil
+}
+
+// ListResources returns all resources exposed by the upstream server
+func (t *StdioTransport) ListResources(ctx context.Context) ([]mcp.ResourceSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, template.NewContext()); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	resourcesResult, err := t.client.ListResources(ctx, mcpgo.ListResourcesRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list resources: %w", err)
+	}
+
+	resources := make([]mcp.ResourceSchema, 0, len(resourcesResult.Resources))
+	for _, r := range resourcesResult.Resources {
+		resources = append(resources, mcp.ResourceSchema{
+			URI:         r.URI,
+			Name:        r.Name,
+			Description: r.Description,
+			MimeType:    r.MIMEType,
+			Meta:        convertMeta(r.Meta),
+		})
+	}
+	return resources, nil
+}
+
+// ReadResource reads a resource by URI from the upstream server
+func (t *StdioTransport) ReadResource(ctx context.Context, uri string) (*mcp.ReadResourceResult, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, template.NewContext()); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	readRequest := mcpgo.ReadResourceRequest{}
+	readRequest.Params.URI = uri
+	readResult, err := t.client.ReadResource(ctx, readRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read resource: %w", err)
+	}
+
+	result := &mcp.ReadResourceResult{Meta: convertMeta(readResult.Meta)}
+	for _, c := range readResult.Contents {
+		if converted := convertResourceContents(c); converted != nil {
+			result.Contents = append(result.Contents, converted)
+		}
+	}
+	return result, nil
 }
 
 func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {
@@ -206,91 +268,7 @@ func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
 
-	// Convert mcp-go result to local mcp format
-	result := &mcp.CallToolResult{
-		IsError: mcpResult.IsError,
-		Meta:    mcpResult.Meta,
-	}
-
-	// Process content items
-	if len(mcpResult.Content) > 0 {
-		var validContents []mcp.Content
-
-		for _, content := range mcpResult.Content {
-			// Skip null content
-			if content == nil {
-				continue
-			}
-
-			// Try to get content type
-			contentType := ""
-			switch c := content.(type) {
-			case *mcpgo.TextContent:
-				contentType = "text"
-				validContents = append(validContents, &mcp.TextContent{
-					Type: "text",
-					Text: c.Text,
-				})
-			case *mcpgo.ImageContent:
-				contentType = "image"
-				validContents = append(validContents, &mcp.ImageContent{
-					Type:     "image",
-					Data:     c.Data,
-					MimeType: c.MIMEType,
-				})
-			case *mcpgo.AudioContent:
-				contentType = "audio"
-				validContents = append(validContents, &mcp.AudioContent{
-					Type:     "audio",
-					Data:     c.Data,
-					MimeType: c.MIMEType,
-				})
-			default:
-				// Try to parse from raw content
-				rawContent, err := json.Marshal(content)
-				if err == nil {
-					var contentMap map[string]interface{}
-					if json.Unmarshal(rawContent, &contentMap) == nil {
-						if typ, ok := contentMap["type"].(string); ok {
-							contentType = typ
-
-							switch contentType {
-							case "text":
-								if text, ok := contentMap["text"].(string); ok {
-									validContents = append(validContents, &mcp.TextContent{
-										Type: "text",
-										Text: text,
-									})
-								}
-							case "image":
-								data, _ := contentMap["data"].(string)
-								mimeType, _ := contentMap["mimeType"].(string)
-								validContents = append(validContents, &mcp.ImageContent{
-									Type:     "image",
-									Data:     data,
-									MimeType: mimeType,
-								})
-							case "audio":
-								data, _ := contentMap["data"].(string)
-								mimeType, _ := contentMap["mimeType"].(string)
-								validContents = append(validContents, &mcp.AudioContent{
-									Type:     "audio",
-									Data:     data,
-									MimeType: mimeType,
-								})
-							}
-						}
-					}
-				}
-			}
-		}
-
-		if len(validContents) > 0 {
-			result.Content = validContents
-		}
-	}
-
-	return result, nil
+	return convertMCPGoResult(mcpResult), nil
 }
 
 // FetchPrompts returns all prompts

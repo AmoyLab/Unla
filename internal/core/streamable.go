@@ -481,8 +481,10 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				return
 			}
 
-			tools, err = transport.FetchTools(c.Request.Context())
+			tools, err = transport.FetchTools(s.forwardCallHeaders(c))
 			if err != nil {
+				s.getLogger(c).Warn("upstream fetch tools failed",
+					zap.String("prefix", conn.Meta().Prefix), zap.Error(err))
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
@@ -574,10 +576,40 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		return
 
 	case mcp.ResourcesList:
-		// Return an empty resources list by default
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
+		}
+
+		var resources []mcp.ResourceSchema
+		var err error
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			// Config-driven backends currently declare no resources
+			resources = []mcp.ResourceSchema{}
+		case cnst.BackendProtoStdio, cnst.BackendProtoSSE, cnst.BackendProtoStreamable:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch resources", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			resources, err = transport.ListResources(s.forwardCallHeaders(c))
+			if err != nil {
+				s.getLogger(c).Warn("upstream list resources failed",
+					zap.String("prefix", conn.Meta().Prefix), zap.Error(err))
+				s.sendProtocolError(c, req.Id, "Failed to fetch resources", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+		default:
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
 		s.sendSuccessResponse(c, conn, req, struct {
-			Resources []struct{} `json:"resources"`
-		}{Resources: []struct{}{}}, false)
+			Resources []mcp.ResourceSchema `json:"resources"`
+		}{Resources: resources}, false)
 		return
 
 	case mcp.ResourcesTemplatesList:
@@ -588,16 +620,47 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		return
 
 	case mcp.ResourcesRead:
-		// Minimal stub: acknowledge read with empty contents to avoid -32601
-		type params struct {
+		type readParams struct {
 			URI string `json:"uri"`
 		}
-		var p params
-		_ = json.Unmarshal(req.Params, &p)
-		s.sendSuccessResponse(c, conn, req, struct {
-			Contents []struct{} `json:"contents"`
-		}{Contents: []struct{}{}}, false)
-		return
+		var p readParams
+		if err := json.Unmarshal(req.Params, &p); err != nil || p.URI == "" {
+			s.sendProtocolError(c, req.Id, "Invalid resource URI", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
+		}
+
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			// Config-driven backends currently serve no resource contents
+			s.sendSuccessResponse(c, conn, req, &mcp.ReadResourceResult{Contents: []any{}}, false)
+			return
+		case cnst.BackendProtoStdio, cnst.BackendProtoSSE, cnst.BackendProtoStreamable:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				s.sendProtocolError(c, req.Id, "Failed to read resource", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			result, err := transport.ReadResource(s.forwardCallHeaders(c), p.URI)
+			if err != nil {
+				s.getLogger(c).Warn("upstream read resource failed",
+					zap.String("prefix", conn.Meta().Prefix), zap.String("uri", p.URI), zap.Error(err))
+				s.sendProtocolError(c, req.Id, "Failed to read resource", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			s.sendSuccessResponse(c, conn, req, result, false)
+			return
+		default:
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
 
 	case mcp.PromptsList:
 		protoType := s.state.GetProtoType(conn.Meta().Prefix)

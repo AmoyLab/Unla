@@ -120,6 +120,8 @@ type (
 		Type string `json:"type"`
 		// The text content
 		Text string `json:"text"`
+		// Meta carries content-level `_meta` passthrough
+		Meta map[string]any `json:"_meta,omitempty"`
 	}
 
 	ImageContent struct {
@@ -129,6 +131,8 @@ type (
 		Data string `json:"data"`
 		// The MIME type of the image. e.g., "image/png", "image/jpeg"
 		MimeType string `json:"mimeType"`
+		// Meta carries content-level `_meta` passthrough
+		Meta map[string]any `json:"_meta,omitempty"`
 	}
 
 	AudioContent struct {
@@ -138,14 +142,55 @@ type (
 		Data string `json:"data"`
 		// The MIME type of the audio. e.g., "audio/wav", "audio/mpeg"
 		MimeType string `json:"mimeType"`
+		// Meta carries content-level `_meta` passthrough
+		Meta map[string]any `json:"_meta,omitempty"`
 	}
 
 	// CallToolResult represents the result of a tools/call request
 	CallToolResult struct {
-		Content    []Content      `json:"content"`
-		IsError    bool           `json:"isError"`
-		ResultType string         `json:"resultType,omitempty"`
-		Meta       map[string]any `json:"_meta,omitempty"`
+		Content           []Content      `json:"content"`
+		IsError           bool           `json:"isError"`
+		ResultType        string         `json:"resultType,omitempty"`
+		Meta              map[string]any `json:"_meta,omitempty"`
+		StructuredContent any            `json:"structuredContent,omitempty"`
+	}
+
+	// ResourceSchema represents a resource descriptor returned by resources/list
+	ResourceSchema struct {
+		URI         string         `json:"uri"`
+		Name        string         `json:"name"`
+		Description string         `json:"description,omitempty"`
+		MimeType    string         `json:"mimeType,omitempty"`
+		Meta        map[string]any `json:"_meta,omitempty"`
+	}
+
+	// TextResourceContents represents text contents of a resource
+	TextResourceContents struct {
+		URI      string         `json:"uri"`
+		MimeType string         `json:"mimeType,omitempty"`
+		Text     string         `json:"text"`
+		Meta     map[string]any `json:"_meta,omitempty"`
+	}
+
+	// BlobResourceContents represents base64 blob contents of a resource
+	BlobResourceContents struct {
+		URI      string         `json:"uri"`
+		MimeType string         `json:"mimeType,omitempty"`
+		Blob     string         `json:"blob"`
+		Meta     map[string]any `json:"_meta,omitempty"`
+	}
+
+	// ReadResourceResult represents the result of a resources/read request
+	ReadResourceResult struct {
+		Contents []any          `json:"contents"`
+		Meta     map[string]any `json:"_meta,omitempty"`
+	}
+
+	// EmbeddedResource represents a resource embedded in a tool call result
+	EmbeddedResource struct {
+		Type     string         `json:"type"`
+		Resource any            `json:"resource"`
+		Meta     map[string]any `json:"_meta,omitempty"`
 	}
 
 	// ImplementationSchema describes the name and version of an MCP implementation
@@ -382,6 +427,10 @@ func (i *ImageContent) GetType() string {
 
 func (i *AudioContent) GetType() string {
 	return AudioContentType
+}
+
+func (e *EmbeddedResource) GetType() string {
+	return "resource"
 }
 
 // NewCallToolResult creates a new CallToolResult

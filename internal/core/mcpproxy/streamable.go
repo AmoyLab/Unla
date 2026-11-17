@@ -34,7 +34,10 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 	}
 
 	// Create streamable transport
-	streamableTransport, err := transport.NewStreamableHTTP(t.cfg.URL)
+	streamableTransport, err := transport.NewStreamableHTTP(
+		t.cfg.URL,
+		transport.WithHTTPHeaderFunc(CallHeadersFromContext),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
 	}
@@ -54,6 +57,7 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 		Name:    cnst.AppName,
 		Version: version.Get(),
 	}
+	initRequest.Params.Capabilities.Extensions = uiExtensionCapability()
 
 	_, err = c.Initialize(ctx, initRequest)
 	if err != nil {
@@ -140,10 +144,71 @@ func (t *StreamableTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema,
 			Name:        schema.Name,
 			Description: schema.Description,
 			InputSchema: inputSchema,
+			Meta:        convertMeta(schema.Meta),
 		}
 	}
 
 	return tools, nil
+}
+
+// ListResources returns all resources exposed by the upstream server
+func (t *StreamableTransport) ListResources(ctx context.Context) ([]mcp.ResourceSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	resourcesResult, err := t.client.ListResources(ctx, mcpgo.ListResourcesRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list resources: %w", err)
+	}
+
+	resources := make([]mcp.ResourceSchema, 0, len(resourcesResult.Resources))
+	for _, r := range resourcesResult.Resources {
+		resources = append(resources, mcp.ResourceSchema{
+			URI:         r.URI,
+			Name:        r.Name,
+			Description: r.Description,
+			MimeType:    r.MIMEType,
+			Meta:        convertMeta(r.Meta),
+		})
+	}
+	return resources, nil
+}
+
+// ReadResource reads a resource by URI from the upstream server
+func (t *StreamableTransport) ReadResource(ctx context.Context, uri string) (*mcp.ReadResourceResult, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	readRequest := mcpgo.ReadResourceRequest{}
+	readRequest.Params.URI = uri
+	readResult, err := t.client.ReadResource(ctx, readRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read resource: %w", err)
+	}
+
+	result := &mcp.ReadResourceResult{Meta: convertMeta(readResult.Meta)}
+	for _, c := range readResult.Contents {
+		if converted := convertResourceContents(c); converted != nil {
+			result.Contents = append(result.Contents, converted)
+		}
+	}
+	return result, nil
 }
 
 func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {

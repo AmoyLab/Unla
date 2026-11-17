@@ -34,7 +34,10 @@ func (t *SSETransport) Start(ctx context.Context, tmplCtx *template.Context) err
 	}
 
 	// Create SSE transport
-	sseTransport, err := transport.NewSSE(t.cfg.URL)
+	sseTransport, err := transport.NewSSE(
+		t.cfg.URL,
+		transport.WithHeaderFunc(CallHeadersFromContext),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create SSE transport: %w", err)
 	}
@@ -54,6 +57,7 @@ func (t *SSETransport) Start(ctx context.Context, tmplCtx *template.Context) err
 		Name:    cnst.AppName,
 		Version: version.Get(),
 	}
+	initRequest.Params.Capabilities.Extensions = uiExtensionCapability()
 
 	_, err = c.Initialize(ctx, initRequest)
 	if err != nil {
@@ -140,11 +144,64 @@ func (t *SSETransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error)
 			Name:        schema.Name,
 			Description: schema.Description,
 			InputSchema: inputSchema,
+			Meta:        convertMeta(schema.Meta),
 		}
 	}
 
 	t.Stop(ctx)
 	return tools, nil
+}
+
+// ListResources returns all resources exposed by the upstream server
+func (t *SSETransport) ListResources(ctx context.Context) ([]mcp.ResourceSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer t.Stop(ctx)
+
+	resourcesResult, err := t.client.ListResources(ctx, mcpgo.ListResourcesRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list resources: %w", err)
+	}
+
+	resources := make([]mcp.ResourceSchema, 0, len(resourcesResult.Resources))
+	for _, r := range resourcesResult.Resources {
+		resources = append(resources, mcp.ResourceSchema{
+			URI:         r.URI,
+			Name:        r.Name,
+			Description: r.Description,
+			MimeType:    r.MIMEType,
+			Meta:        convertMeta(r.Meta),
+		})
+	}
+	return resources, nil
+}
+
+// ReadResource reads a resource by URI from the upstream server
+func (t *SSETransport) ReadResource(ctx context.Context, uri string) (*mcp.ReadResourceResult, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer t.Stop(ctx)
+
+	readRequest := mcpgo.ReadResourceRequest{}
+	readRequest.Params.URI = uri
+	readResult, err := t.client.ReadResource(ctx, readRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read resource: %w", err)
+	}
+
+	result := &mcp.ReadResourceResult{Meta: convertMeta(readResult.Meta)}
+	for _, c := range readResult.Contents {
+		if converted := convertResourceContents(c); converted != nil {
+			result.Contents = append(result.Contents, converted)
+		}
+	}
+	return result, nil
 }
 
 func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {

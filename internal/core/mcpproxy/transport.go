@@ -42,6 +42,11 @@ type Transport interface {
 	FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error)
 	// FetchPrompt fetches a specific prompt by name
 	FetchPrompt(ctx context.Context, name string) (*mcp.PromptSchema, error)
+
+	// ListResources fetches the list of available resources
+	ListResources(ctx context.Context) ([]mcp.ResourceSchema, error)
+	// ReadResource reads a resource by URI
+	ReadResource(ctx context.Context, uri string) (*mcp.ReadResourceResult, error)
 }
 
 // NewTransport creates transport based on the configuration

@@ -7,11 +7,59 @@ import (
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 )
 
+// uiExtensionCapability returns the MCP Apps UI extension capability
+// (SEP-1865) advertised in initialize.params.capabilities.extensions, so
+// upstream servers that gate `_meta.ui` declarations on client support keep
+// declaring them behind the gateway.
+func uiExtensionCapability() map[string]any {
+	return map[string]any{
+		"io.modelcontextprotocol/ui": map[string]any{
+			"mimeTypes": []string{"text/html;profile=mcp-app"},
+		},
+	}
+}
+
+// convertMeta converts mcp-go `_meta` to a plain map so MCP Apps
+// metadata (e.g. `_meta.ui.resourceUri`) survives the gateway hop.
+func convertMeta(meta *mcpgo.Meta) map[string]any {
+	if meta == nil || len(meta.AdditionalFields) == 0 {
+		return nil
+	}
+	out := make(map[string]any, len(meta.AdditionalFields))
+	for k, v := range meta.AdditionalFields {
+		out[k] = v
+	}
+	return out
+}
+
+// convertResourceContents converts mcp-go resource contents to local mcp format
+func convertResourceContents(rc mcpgo.ResourceContents) any {
+	switch c := rc.(type) {
+	case mcpgo.TextResourceContents:
+		return mcp.TextResourceContents{
+			URI:      c.URI,
+			MimeType: c.MIMEType,
+			Text:     c.Text,
+			Meta:     c.Meta,
+		}
+	case mcpgo.BlobResourceContents:
+		return mcp.BlobResourceContents{
+			URI:      c.URI,
+			MimeType: c.MIMEType,
+			Blob:     c.Blob,
+			Meta:     c.Meta,
+		}
+	default:
+		return nil
+	}
+}
+
 // convertMCPGoResult converts mcp-go result to local mcp format
 func convertMCPGoResult(res *mcpgo.CallToolResult) *mcp.CallToolResult {
 	result := &mcp.CallToolResult{
-		IsError: res.IsError,
-		Meta:    res.Meta,
+		IsError:           res.IsError,
+		Meta:              convertMeta(res.Meta),
+		StructuredContent: res.StructuredContent,
 	}
 
 	// Process content items
@@ -32,6 +80,7 @@ func convertMCPGoResult(res *mcpgo.CallToolResult) *mcp.CallToolResult {
 				validContents = append(validContents, &mcp.TextContent{
 					Type: "text",
 					Text: c.Text,
+					Meta: convertMeta(c.Meta),
 				})
 			case *mcpgo.ImageContent:
 				contentType = "image"
@@ -39,6 +88,7 @@ func convertMCPGoResult(res *mcpgo.CallToolResult) *mcp.CallToolResult {
 					Type:     "image",
 					Data:     c.Data,
 					MimeType: c.MIMEType,
+					Meta:     convertMeta(c.Meta),
 				})
 			case *mcpgo.AudioContent:
 				contentType = "audio"
@@ -46,6 +96,14 @@ func convertMCPGoResult(res *mcpgo.CallToolResult) *mcp.CallToolResult {
 					Type:     "audio",
 					Data:     c.Data,
 					MimeType: c.MIMEType,
+					Meta:     convertMeta(c.Meta),
+				})
+			case *mcpgo.EmbeddedResource:
+				contentType = "resource"
+				validContents = append(validContents, &mcp.EmbeddedResource{
+					Type:     "resource",
+					Resource: convertResourceContents(c.Resource),
+					Meta:     convertMeta(c.Meta),
 				})
 			default:
 				// Try to parse from raw content
