@@ -37,6 +37,7 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 	// Create streamable transport
 	streamableTransport, err := transport.NewStreamableHTTP(
 		t.cfg.URL,
+		transport.WithHTTPBasicClient(newUpstreamHTTPClient()),
 		transport.WithHTTPHeaderFunc(CallHeadersFromContext),
 	)
 	if err != nil {

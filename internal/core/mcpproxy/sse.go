@@ -37,6 +37,7 @@ func (t *SSETransport) Start(ctx context.Context, tmplCtx *template.Context) err
 	// Create SSE transport
 	sseTransport, err := transport.NewSSE(
 		t.cfg.URL,
+		transport.WithHTTPClient(newUpstreamHTTPClient()),
 		transport.WithHeaderFunc(CallHeadersFromContext),
 	)
 	if err != nil {
