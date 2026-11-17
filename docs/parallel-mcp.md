@@ -9,25 +9,33 @@ for the available tools and current limits.
 ## Add the gateway configuration
 
 1. Start Unla using the [quick start](../README.md#-getting-started).
-2. In the web interface, click **Add MCP Server**, paste
-   [configs/proxy-parallel.yaml](../configs/proxy-parallel.yaml), and save.
+   The example has no gateway authentication. For a local Docker trial, bind
+   the published ports to loopback. For the gateway, replace `-p 5235:5235` with
+   `-p 127.0.0.1:5235:5235`.
+2. Sign in to the web interface with an account that can manage the target
+   tenant. In **Gateway Manager**, click **Create**, choose **YAML Mode**, paste
+   [configs/proxy-parallel.yaml](../configs/proxy-parallel.yaml), and click
+   **Create** again.
    For another tenant, set `tenant` to its name and place `routers[0].prefix`
    under that tenant's configured prefix. For example, tenant `team` with
    prefix `/team` can use `/team/parallel`.
 3. Connect your MCP client to
-   `http://localhost:5235/gateway/parallel/mcp` using Streamable HTTP.
-   For a remote deployment, replace the host and port with your gateway address
-   and retain your deployment's access controls.
-   If you changed the router prefix, use that prefix in the client URL too;
-   the example above becomes `http://localhost:5235/team/parallel/mcp`.
+   `http://127.0.0.1:5235/gateway/parallel/mcp` using Streamable HTTP.
+   If you changed the router prefix, use that prefix in the client URL too.
+   For the `team` example, use `http://127.0.0.1:5235/team/parallel/mcp`.
+   For remote access, protect the route with Unla's router OAuth2 or an
+   authenticated ingress before exposing it. Give your MCP client the HTTPS
+   endpoint for that route and configure the client to authenticate there.
 
 The `routers.server` and `mcpServers.name` values match so Unla treats the backend
 as an MCP server. Do not put this backend in `servers`, which is for HTTP API
 tools. `policy: "onDemand"` and `preinstalled: false` avoid opening the backend
 while the gateway builds its routes. The API server can still connect for
 background MCP metadata refresh; that discovery does not run a web search.
-Search runs when a client calls `web_search`. Existing configurations continue
-to work alongside this example.
+Search runs when a client calls `web_search`. Run one search at a time with
+this example. Unla's on-demand Streamable HTTP transport shares its upstream
+connection, so overlapping calls can interrupt each other. Existing
+configurations continue to work alongside this example.
 
 ## Use it in an agent run
 
