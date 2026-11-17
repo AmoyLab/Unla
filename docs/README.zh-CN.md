@@ -91,6 +91,12 @@ docker run -d \
 >   registry.ap-southeast-1.aliyuncs.com/amoylab/unla-allinone:latest
 > ```
 
+### 在 Railway 一键部署
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/unla)
+
+使用 all-in-one 镜像一键部署，SQLite 数据保存在 `/app/data` 持久化卷中。每次部署都会自动生成超级管理员密码（`SUPER_ADMIN_PASSWORD`）和 JWT 密钥；使用 `admin` 登录，网关端点位于 `https://YOUR-DOMAIN/gateway`。
+
 ### 访问和配置
 
 1. 访问 Web 界面：

@@ -67,6 +67,12 @@ docker run -d \
   ghcr.io/amoylab/unla/allinone:latest
 ```
 
+### Deploy on Railway
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/unla)
+
+One-click deploy of the all-in-one image with SQLite on a persistent `/app/data` volume. The super admin password (`SUPER_ADMIN_PASSWORD`) and the JWT secret are generated per deployment; log in as `admin`, and gateway endpoints are served under `https://YOUR-DOMAIN/gateway`.
+
 ### Access and Configuration
 
 1. Access the Web Interface:

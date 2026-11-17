@@ -68,6 +68,12 @@ docker run -d \
   ghcr.io/amoylab/unla/allinone:latest
 ```
 
+### 在 Railway 一鍵部署
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/unla)
+
+使用 all-in-one 映像檔一鍵部署，SQLite 資料儲存在 `/app/data` 持久化磁碟區中。每次部署都會自動產生超級管理員密碼（`SUPER_ADMIN_PASSWORD`）與 JWT 金鑰；以 `admin` 登入，閘道端點位於 `https://YOUR-DOMAIN/gateway`。
+
 ### 存取與設定
 
 1. 存取 Web 介面：
