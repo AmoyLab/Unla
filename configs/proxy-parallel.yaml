@@ -1,0 +1,13 @@
+name: "proxy-parallel"
+tenant: "default"
+
+routers:
+  - server: "parallel"
+    prefix: "/gateway/parallel"
+
+mcpServers:
+  - type: "streamable-http"
+    name: "parallel"
+    url: "https://mcp.parallel.ai/mcp"
+    policy: "onDemand"
+    preinstalled: false
