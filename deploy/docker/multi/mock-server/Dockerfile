@@ -1,4 +1,4 @@
-FROM golang:1.25.0 AS builder
+FROM golang:1.25.5 AS builder
 WORKDIR /app
 COPY . .
 RUN GOOS=linux go build -o mock-server ./cmd/mock-server

@@ -71,7 +71,7 @@ func NewMCPServer() *server.MCPServer {
 	hooks.AddBeforeCallTool(func(ctx context.Context, id any, message *mcp.CallToolRequest) {
 		logger.Info("beforeCallTool", zap.Any("id", id), zap.Any("message", message))
 	})
-	hooks.AddAfterCallTool(func(ctx context.Context, id any, message *mcp.CallToolRequest, result *mcp.CallToolResult) {
+	hooks.AddAfterCallTool(func(ctx context.Context, id any, message *mcp.CallToolRequest, result any) {
 		logger.Info("afterCallTool", zap.Any("id", id), zap.Any("message", message), zap.Any("result", result))
 	})
 

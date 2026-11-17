@@ -3,6 +3,7 @@ package mcpproxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -34,7 +35,11 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 	}
 
 	// Create streamable transport
-	streamableTransport, err := transport.NewStreamableHTTP(t.cfg.URL)
+	streamableTransport, err := transport.NewStreamableHTTP(
+		t.cfg.URL,
+		transport.WithHTTPBasicClient(newUpstreamHTTPClient()),
+		transport.WithHTTPHeaderFunc(CallHeadersFromContext),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
 	}
@@ -54,6 +59,7 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 		Name:    cnst.AppName,
 		Version: version.Get(),
 	}
+	initRequest.Params.Capabilities.Extensions = uiExtensionCapability()
 
 	_, err = c.Initialize(ctx, initRequest)
 	if err != nil {
@@ -140,10 +146,117 @@ func (t *StreamableTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema,
 			Name:        schema.Name,
 			Description: schema.Description,
 			InputSchema: inputSchema,
+			Meta:        convertMeta(schema.Meta),
 		}
 	}
 
 	return tools, nil
+}
+
+// ListResources returns all resources exposed by the upstream server
+func (t *StreamableTransport) ListResources(ctx context.Context) ([]mcp.ResourceSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	resourcesResult, err := t.client.ListResources(ctx, mcpgo.ListResourcesRequest{})
+	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return []mcp.ResourceSchema{}, nil
+		}
+		return nil, fmt.Errorf("failed to list resources: %w", err)
+	}
+
+	resources := make([]mcp.ResourceSchema, 0, len(resourcesResult.Resources))
+	for _, r := range resourcesResult.Resources {
+		resources = append(resources, mcp.ResourceSchema{
+			URI:         r.URI,
+			Name:        r.Name,
+			Description: r.Description,
+			MimeType:    r.MIMEType,
+			Annotations: convertAnnotations(r.Annotations),
+			Meta:        convertMeta(r.Meta),
+		})
+	}
+	return resources, nil
+}
+
+// ListResourceTemplates returns all resource templates exposed by the upstream server
+func (t *StreamableTransport) ListResourceTemplates(ctx context.Context) ([]mcp.ResourceTemplateSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	templatesResult, err := t.client.ListResourceTemplates(ctx, mcpgo.ListResourceTemplatesRequest{})
+	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return []mcp.ResourceTemplateSchema{}, nil
+		}
+		return nil, fmt.Errorf("failed to list resource templates: %w", err)
+	}
+
+	templates := make([]mcp.ResourceTemplateSchema, 0, len(templatesResult.ResourceTemplates))
+	for _, rt := range templatesResult.ResourceTemplates {
+		uriTemplate := ""
+		if rt.URITemplate != nil {
+			uriTemplate = rt.URITemplate.Raw()
+		}
+		templates = append(templates, mcp.ResourceTemplateSchema{
+			URITemplate: uriTemplate,
+			Name:        rt.Name,
+			Description: rt.Description,
+			MimeType:    rt.MIMEType,
+			Annotations: convertAnnotations(rt.Annotations),
+			Meta:        convertMeta(rt.Meta),
+		})
+	}
+	return templates, nil
+}
+
+// ReadResource reads a resource by URI from the upstream server
+func (t *StreamableTransport) ReadResource(ctx context.Context, uri string) (*mcp.ReadResourceResult, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
+
+	readRequest := mcpgo.ReadResourceRequest{}
+	readRequest.Params.URI = uri
+	readResult, err := t.client.ReadResource(ctx, readRequest)
+	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return &mcp.ReadResourceResult{Contents: []any{}}, nil
+		}
+		return nil, fmt.Errorf("failed to read resource: %w", err)
+	}
+
+	result := &mcp.ReadResourceResult{Contents: []any{}, Meta: convertMeta(readResult.Meta)}
+	for _, c := range readResult.Contents {
+		if converted := convertResourceContents(c); converted != nil {
+			result.Contents = append(result.Contents, converted)
+		}
+	}
+	return result, nil
 }
 
 func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {

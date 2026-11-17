@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -1167,21 +1166,61 @@ func (h *MCP) fetchCapabilities(ctx context.Context, cfg *config.MCPConfig) (*mc
 				mu.Unlock()
 			}()
 
-			// Resources functionality not yet implemented in transport layer
-			// Emit clear warnings to avoid silent failures and surface partial support
+			// Fetch resources
 			go func() {
 				defer serverWg.Done()
-				h.logger.Debug("resource fetching not implemented; skipping",
-					zap.String("server", serverCfg.Name))
-				// Push a non-fatal warning into the error channel for aggregation
-				errChan <- fmt.Errorf("resources fetching not implemented for server %s", serverCfg.Name)
+				resources, err := transport.ListResources(ctx)
+				if err != nil {
+					h.logger.Error("failed to fetch resources",
+						zap.String("server", serverCfg.Name),
+						zap.Error(err))
+					errChan <- err
+					return
+				}
+
+				// Convert to MCP resources
+				mcpResources := make([]mcp.MCPResource, len(resources))
+				for i, resource := range resources {
+					mcpResources[i] = mcp.MCPResource{
+						Uri:         resource.URI,
+						Name:        resource.Name,
+						Description: resource.Description,
+						MimeType:    resource.MimeType,
+						LastSynced:  time.Now().UTC(),
+					}
+				}
+
+				mu.Lock()
+				capabilities.Resources = append(capabilities.Resources, mcpResources...)
+				mu.Unlock()
 			}()
+			// Fetch resource templates
 			go func() {
 				defer serverWg.Done()
-				h.logger.Debug("resource template fetching not implemented; skipping",
-					zap.String("server", serverCfg.Name))
-				// Push a non-fatal warning into the error channel for aggregation
-				errChan <- fmt.Errorf("resource templates fetching not implemented for server %s", serverCfg.Name)
+				templates, err := transport.ListResourceTemplates(ctx)
+				if err != nil {
+					h.logger.Error("failed to fetch resource templates",
+						zap.String("server", serverCfg.Name),
+						zap.Error(err))
+					errChan <- err
+					return
+				}
+
+				// Convert to MCP resource templates
+				mcpTemplates := make([]mcp.MCPResourceTemplate, len(templates))
+				for i, template := range templates {
+					mcpTemplates[i] = mcp.MCPResourceTemplate{
+						UriTemplate: template.URITemplate,
+						Name:        template.Name,
+						Description: template.Description,
+						MimeType:    template.MimeType,
+						LastSynced:  time.Now().UTC(),
+					}
+				}
+
+				mu.Lock()
+				capabilities.ResourceTemplates = append(capabilities.ResourceTemplates, mcpTemplates...)
+				mu.Unlock()
 			}()
 
 			serverWg.Wait()

@@ -3,6 +3,7 @@ package mcpproxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -34,7 +35,11 @@ func (t *SSETransport) Start(ctx context.Context, tmplCtx *template.Context) err
 	}
 
 	// Create SSE transport
-	sseTransport, err := transport.NewSSE(t.cfg.URL)
+	sseTransport, err := transport.NewSSE(
+		t.cfg.URL,
+		transport.WithHTTPClient(newUpstreamHTTPClient()),
+		transport.WithHeaderFunc(CallHeadersFromContext),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create SSE transport: %w", err)
 	}
@@ -54,6 +59,7 @@ func (t *SSETransport) Start(ctx context.Context, tmplCtx *template.Context) err
 		Name:    cnst.AppName,
 		Version: version.Get(),
 	}
+	initRequest.Params.Capabilities.Extensions = uiExtensionCapability()
 
 	_, err = c.Initialize(ctx, initRequest)
 	if err != nil {
@@ -140,11 +146,113 @@ func (t *SSETransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error)
 			Name:        schema.Name,
 			Description: schema.Description,
 			InputSchema: inputSchema,
+			Meta:        convertMeta(schema.Meta),
 		}
 	}
 
 	t.Stop(ctx)
 	return tools, nil
+}
+
+// listUpstreamResources lists resources, tolerating upstreams that do not
+// implement resources/list by returning an empty list (the gateway advertised
+// resources as an empty stub before real forwarding existed).
+func (t *SSETransport) listUpstreamResources(ctx context.Context) ([]mcp.ResourceSchema, error) {
+	resourcesResult, err := t.client.ListResources(ctx, mcpgo.ListResourcesRequest{})
+	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return []mcp.ResourceSchema{}, nil
+		}
+		return nil, fmt.Errorf("failed to list resources: %w", err)
+	}
+
+	resources := make([]mcp.ResourceSchema, 0, len(resourcesResult.Resources))
+	for _, r := range resourcesResult.Resources {
+		resources = append(resources, mcp.ResourceSchema{
+			URI:         r.URI,
+			Name:        r.Name,
+			Description: r.Description,
+			MimeType:    r.MIMEType,
+			Annotations: convertAnnotations(r.Annotations),
+			Meta:        convertMeta(r.Meta),
+		})
+	}
+	return resources, nil
+}
+
+// ListResources returns all resources exposed by the upstream server
+func (t *SSETransport) ListResources(ctx context.Context) ([]mcp.ResourceSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer t.Stop(ctx)
+
+	return t.listUpstreamResources(ctx)
+}
+
+// ListResourceTemplates returns all resource templates exposed by the upstream server
+func (t *SSETransport) ListResourceTemplates(ctx context.Context) ([]mcp.ResourceTemplateSchema, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer t.Stop(ctx)
+
+	templatesResult, err := t.client.ListResourceTemplates(ctx, mcpgo.ListResourceTemplatesRequest{})
+	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return []mcp.ResourceTemplateSchema{}, nil
+		}
+		return nil, fmt.Errorf("failed to list resource templates: %w", err)
+	}
+
+	templates := make([]mcp.ResourceTemplateSchema, 0, len(templatesResult.ResourceTemplates))
+	for _, rt := range templatesResult.ResourceTemplates {
+		uriTemplate := ""
+		if rt.URITemplate != nil {
+			uriTemplate = rt.URITemplate.Raw()
+		}
+		templates = append(templates, mcp.ResourceTemplateSchema{
+			URITemplate: uriTemplate,
+			Name:        rt.Name,
+			Description: rt.Description,
+			MimeType:    rt.MIMEType,
+			Annotations: convertAnnotations(rt.Annotations),
+			Meta:        convertMeta(rt.Meta),
+		})
+	}
+	return templates, nil
+}
+
+// ReadResource reads a resource by URI from the upstream server
+func (t *SSETransport) ReadResource(ctx context.Context, uri string) (*mcp.ReadResourceResult, error) {
+	if !t.IsRunning() {
+		if err := t.Start(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+	defer t.Stop(ctx)
+
+	readRequest := mcpgo.ReadResourceRequest{}
+	readRequest.Params.URI = uri
+	readResult, err := t.client.ReadResource(ctx, readRequest)
+	if err != nil {
+		if errors.Is(err, mcpgo.ErrMethodNotFound) {
+			return &mcp.ReadResourceResult{Contents: []any{}}, nil
+		}
+		return nil, fmt.Errorf("failed to read resource: %w", err)
+	}
+
+	result := &mcp.ReadResourceResult{Contents: []any{}, Meta: convertMeta(readResult.Meta)}
+	for _, c := range readResult.Contents {
+		if converted := convertResourceContents(c); converted != nil {
+			result.Contents = append(result.Contents, converted)
+		}
+	}
+	return result, nil
 }
 
 func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {
