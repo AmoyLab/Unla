@@ -88,6 +88,9 @@ After configuration, the service will be available at these endpoints:
 
 Configure your MCP Client with the `/sse` or `/mcp` suffix URLs to start using it.
 
+For a remote MCP backend, see the [Parallel public web search example](docs/parallel-mcp.md),
+including an importable gateway configuration and a source-link check.
+
 ### Testing
 
 You can test the service using:
